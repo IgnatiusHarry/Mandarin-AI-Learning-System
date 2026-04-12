@@ -41,7 +41,7 @@ export default function ReviewPage() {
       setToken(session.access_token);
 
       const due = await fetchDueCards(session.access_token);
-      setCards(due as ReviewCard[]);
+      setCards(due as unknown as ReviewCard[]);
 
       if (due.length > 0) {
         const sess = await startReviewSession(session.access_token);

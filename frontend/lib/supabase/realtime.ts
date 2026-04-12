@@ -22,7 +22,7 @@ export function subscribeToVocabChanges(
     .on(
       "postgres_changes",
       { event: "INSERT", schema: "public", table: "vocabulary" },
-      (payload) => {
+      (payload: { new: Record<string, unknown> }) => {
         onInsert(payload.new as Record<string, unknown>);
       }
     )
