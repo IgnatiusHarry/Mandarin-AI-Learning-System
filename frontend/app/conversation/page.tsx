@@ -23,7 +23,7 @@ interface Conversation {
   message_count: number;
 }
 
-const TOPICS = ["自由對話", "食物 / 餐廳", "旅遊", "工作 / 學習", "家庭", "台灣文化", "電影 / 音樂"];
+const TOPICS = ["Free Chat", "Food / Restaurants", "Travel", "Work / Study", "Family", "Taiwanese Culture", "Movies / Music"];
 
 export default function ConversationPage() {
   const [token, setToken] = useState<string | null>(null);
@@ -85,7 +85,7 @@ export default function ConversationPage() {
     } catch {
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "❌ 抱歉，發生錯誤，請再試一次。" },
+        { role: "assistant", content: "❌ Sorry, something went wrong. Please try again." },
       ]);
     }
     setLoading(false);
@@ -97,7 +97,7 @@ export default function ConversationPage() {
       <main className="max-w-5xl mx-auto px-4 py-6 flex gap-6 h-[calc(100vh-3.5rem)]">
         {/* Sidebar */}
         <aside className="w-56 flex-shrink-0 hidden md:flex flex-col gap-3">
-          <h2 className="font-semibold text-gray-700 text-sm">過往對話</h2>
+          <h2 className="font-semibold text-gray-700 text-sm">Past Conversations</h2>
           <div className="space-y-2 flex-1 overflow-y-auto">
             {conversations.map((c) => (
               <button
@@ -108,7 +108,7 @@ export default function ConversationPage() {
                 }`}
               >
                 <div className="font-medium truncate">{c.topic}</div>
-                <div className="text-xs text-gray-400">{c.message_count} 條訊息</div>
+                <div className="text-xs text-gray-400">{c.message_count} message{c.message_count !== 1 ? 's' : ''}</div>
               </button>
             ))}
           </div>
@@ -119,9 +119,9 @@ export default function ConversationPage() {
           {!activeConvoId ? (
             <div className="flex-1 flex items-center justify-center">
               <div className="bg-white border rounded-2xl p-8 w-full max-w-md shadow-sm">
-                <h2 className="text-xl font-bold text-gray-800 mb-4">開始新對話</h2>
+                <h2 className="text-xl font-bold text-gray-800 mb-4">Start New Conversation</h2>
                 <div className="mb-4">
-                  <label className="text-sm font-medium text-gray-600 block mb-2">選擇主題</label>
+                  <label className="text-sm font-medium text-gray-600 block mb-2">Choose a topic</label>
                   <div className="flex flex-wrap gap-2">
                     {TOPICS.map((t) => (
                       <button
@@ -143,7 +143,7 @@ export default function ConversationPage() {
                   disabled={starting}
                   className="w-full bg-red-600 text-white py-2.5 rounded-xl font-medium hover:bg-red-700 disabled:opacity-50"
                 >
-                  {starting ? "開啟中..." : "開始對話 💬"}
+                  {starting ? "Starting..." : "Start Conversation 💬"}
                 </button>
               </div>
             </div>
@@ -168,7 +168,7 @@ export default function ConversationPage() {
                         <div className="mt-2 flex flex-wrap gap-1">
                           {msg.new_vocab.map((w) => (
                             <span key={w} className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-                              ✅ {w} 已加入單字庫
+                              ✅ {w} added to vocabulary
                             </span>
                           ))}
                         </div>
@@ -179,7 +179,7 @@ export default function ConversationPage() {
                 {loading && (
                   <div className="flex justify-start">
                     <div className="bg-white border rounded-2xl px-4 py-3 text-gray-400 text-sm shadow-sm">
-                      小明正在輸入...
+                      小明 is typing...
                     </div>
                   </div>
                 )}
@@ -193,7 +193,7 @@ export default function ConversationPage() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
-                  placeholder="用中文輸入..."
+                  placeholder="Type in Chinese..."
                   className="flex-1 border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-300"
                 />
                 <button

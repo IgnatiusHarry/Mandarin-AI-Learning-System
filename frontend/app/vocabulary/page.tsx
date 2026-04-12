@@ -6,7 +6,7 @@ import { fetchVocabulary, deleteVocab } from "@/lib/api";
 import NavBar from "@/components/NavBar";
 
 const TONE_COLORS = ["text-gray-500", "text-red-500", "text-orange-500", "text-green-600", "text-blue-600"];
-const MASTERY_LABELS = ["新增", "初學", "學習中", "熟悉", "掌握", "精通"];
+const MASTERY_LABELS = ["New", "Beginner", "Learning", "Familiar", "Mastered", "Expert"];
 const MASTERY_COLORS = [
   "bg-gray-100 text-gray-600",
   "bg-red-100 text-red-600",
@@ -60,7 +60,7 @@ export default function VocabularyPage() {
   });
 
   const handleDelete = async (id: string) => {
-    if (!token || !confirm("刪除這個單字？")) return;
+    if (!token || !confirm("Delete this word?")) return;
     await deleteVocab(token, id);
     setVocab((prev) => prev.filter((v) => v.id !== id));
   };
@@ -69,13 +69,13 @@ export default function VocabularyPage() {
     <>
       <NavBar />
       <main className="max-w-5xl mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold text-gray-800 mb-6">📖 單字庫</h1>
+        <h1 className="text-2xl font-bold text-gray-800 mb-6">📖 Vocabulary</h1>
 
         {/* Filters */}
         <div className="flex flex-wrap gap-3 mb-6">
           <input
             type="text"
-            placeholder="搜尋單字、拼音、意思..."
+            placeholder="Search word, pinyin, meaning..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="border rounded-lg px-3 py-1.5 text-sm flex-1 min-w-40 focus:outline-none focus:ring-2 focus:ring-red-300"
@@ -91,13 +91,13 @@ export default function VocabularyPage() {
                     : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                 }`}
               >
-                {level === "all" ? "全部" : MASTERY_LABELS[level]}
+                {level === "all" ? "All" : MASTERY_LABELS[level]}
               </button>
             ))}
           </div>
         </div>
 
-        <p className="text-sm text-gray-500 mb-4">{filtered.length} 個單字</p>
+        <p className="text-sm text-gray-500 mb-4">{filtered.length} word{filtered.length !== 1 ? 's' : ''}</p>
 
         {/* Vocab list */}
         <div className="space-y-3">
@@ -150,14 +150,14 @@ export default function VocabularyPage() {
                   <button
                     onClick={() => handleDelete(v.id)}
                     className="text-gray-300 hover:text-red-400 transition-colors ml-4 text-lg"
-                    title="刪除"
+                    title="Delete"
                   >
                     ×
                   </button>
                 </div>
                 <div className="mt-2 text-xs text-gray-400 flex gap-4">
-                  <span>複習 {v.user_reviews?.[0]?.review_count ?? 0} 次</span>
-                  <span>平均分 {(v.user_reviews?.[0]?.average_quality ?? 0).toFixed(1)}/5</span>
+                  <span>Reviewed {v.user_reviews?.[0]?.review_count ?? 0}×</span>
+                  <span>Avg score {(v.user_reviews?.[0]?.average_quality ?? 0).toFixed(1)}/5</span>
                 </div>
               </div>
             );
@@ -167,7 +167,7 @@ export default function VocabularyPage() {
         {filtered.length === 0 && (
           <div className="text-center text-gray-400 py-20">
             <div className="text-5xl mb-4">📭</div>
-            <p>沒有找到單字。貼上中文文字到 Telegram 開始學習！</p>
+            <p>No words found. Paste Chinese text into Telegram to start learning!</p>
           </div>
         )}
       </main>

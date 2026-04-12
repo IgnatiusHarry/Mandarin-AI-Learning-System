@@ -6,11 +6,11 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
 const navItems = [
-  { href: "/dashboard", label: "儀表板", icon: "📊" },
-  { href: "/review", label: "複習", icon: "📚" },
-  { href: "/vocabulary", label: "單字庫", icon: "📖" },
-  { href: "/conversation", label: "對話", icon: "💬" },
-  { href: "/progress", label: "進度", icon: "📈" },
+  { href: "/dashboard", label: "Dashboard", icon: "📊" },
+  { href: "/review", label: "Review", icon: "📚" },
+  { href: "/vocabulary", label: "Vocabulary", icon: "📖" },
+  { href: "/conversation", label: "Conversation", icon: "💬" },
+  { href: "/progress", label: "Progress", icon: "📈" },
 ];
 
 export default function NavBar() {
@@ -45,7 +45,7 @@ export default function NavBar() {
             onClick={handleLogout}
             className="ml-2 text-gray-400 hover:text-gray-600 text-sm"
           >
-            登出
+            Logout
           </button>
         </div>
       </div>

@@ -23,11 +23,11 @@ const TONE_COLORS = [
 ];
 
 const RATING_BUTTONS = [
-  { quality: 1, label: "完全不記得", color: "bg-red-100 text-red-700 hover:bg-red-200" },
-  { quality: 2, label: "模糊印象", color: "bg-orange-100 text-orange-700 hover:bg-orange-200" },
-  { quality: 3, label: "費力想起", color: "bg-yellow-100 text-yellow-700 hover:bg-yellow-200" },
-  { quality: 4, label: "稍微猶豫", color: "bg-teal-100 text-teal-700 hover:bg-teal-200" },
-  { quality: 5, label: "完全記得", color: "bg-green-100 text-green-700 hover:bg-green-200" },
+  { quality: 1, label: "Blackout", color: "bg-red-100 text-red-700 hover:bg-red-200" },
+  { quality: 2, label: "Hard", color: "bg-orange-100 text-orange-700 hover:bg-orange-200" },
+  { quality: 3, label: "Struggled", color: "bg-yellow-100 text-yellow-700 hover:bg-yellow-200" },
+  { quality: 4, label: "Good", color: "bg-teal-100 text-teal-700 hover:bg-teal-200" },
+  { quality: 5, label: "Easy", color: "bg-green-100 text-green-700 hover:bg-green-200" },
 ];
 
 export default function FlashCard({
@@ -69,7 +69,7 @@ export default function FlashCard({
           onClick={() => setRevealed(true)}
           className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl py-3 font-medium transition-colors"
         >
-          點擊翻牌 👆
+          Tap to reveal 👆
         </button>
       ) : (
         <>
@@ -93,7 +93,7 @@ export default function FlashCard({
           </div>
 
           {/* Rating buttons */}
-          <p className="text-center text-sm text-gray-500 mb-3">你記得這個字嗎？</p>
+          <p className="text-center text-sm text-gray-500 mb-3">How well did you remember?</p>
           <div className="grid grid-cols-5 gap-2">
             {RATING_BUTTONS.map(({ quality, label, color }) => (
               <button

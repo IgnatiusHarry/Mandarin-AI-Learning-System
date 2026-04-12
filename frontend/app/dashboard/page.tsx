@@ -52,7 +52,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <h1 className="text-2xl font-bold text-gray-800 mb-6">今日學習概況</h1>
+        <h1 className="text-2xl font-bold text-gray-800 mb-6">Today's Overview</h1>
 
         {stats ? (
           <>
@@ -61,20 +61,20 @@ export default function DashboardPage() {
               <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-6 flex items-center gap-3">
                 <span className="text-3xl">🔥</span>
                 <div>
-                  <p className="font-semibold text-orange-700">連續學習 {stats.streak_days} 天！</p>
-                  <p className="text-sm text-orange-600">繼續保持，不要中斷！</p>
+                  <p className="font-semibold text-orange-700">{stats.streak_days}-day streak!</p>
+                  <p className="text-sm text-orange-600">Keep it up, don't break the chain!</p>
                 </div>
               </div>
             )}
 
             {/* Stat cards */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-              <StatCard icon="📚" label="總單字數" value={stats.total_words} color="blue" />
-              <StatCard icon="🏆" label="已掌握" value={stats.mastered_words} color="green" />
-              <StatCard icon="📋" label="今日待複習" value={stats.due_today} color="red" />
-              <StatCard icon="✅" label="今日已複習" value={stats.words_reviewed_today} color="teal" />
-              <StatCard icon="⚠️" label="弱點單字" value={stats.weak_words} color="yellow" />
-              <StatCard icon="🔥" label="連續天數" value={stats.streak_days} color="orange" />
+              <StatCard icon="📚" label="Total Words" value={stats.total_words} color="blue" />
+              <StatCard icon="🏆" label="Mastered" value={stats.mastered_words} color="green" />
+              <StatCard icon="📋" label="Due Today" value={stats.due_today} color="red" />
+              <StatCard icon="✅" label="Reviewed Today" value={stats.words_reviewed_today} color="teal" />
+              <StatCard icon="⚠️" label="Weak Words" value={stats.weak_words} color="yellow" />
+              <StatCard icon="🔥" label="Streak Days" value={stats.streak_days} color="orange" />
             </div>
 
             {/* Quick actions */}
@@ -82,26 +82,26 @@ export default function DashboardPage() {
               <ActionCard
                 href="/review"
                 icon="📚"
-                title="開始複習"
-                desc={`${stats.due_today} 個單字待複習`}
+                title="Start Review"
+                desc={`${stats.due_today} card${stats.due_today !== 1 ? 's' : ''} due`}
                 disabled={stats.due_today === 0}
               />
               <ActionCard
                 href="/conversation"
                 icon="💬"
-                title="對話練習"
-                desc="和小明練習口語"
+                title="Conversation"
+                desc="Practice speaking with 小明"
               />
               <ActionCard
                 href="/vocabulary"
                 icon="📖"
-                title="單字庫"
-                desc={`共 ${stats.total_words} 個單字`}
+                title="Vocabulary"
+                desc={`${stats.total_words} word${stats.total_words !== 1 ? 's' : ''} total`}
               />
             </div>
           </>
         ) : (
-          <div className="text-gray-400 text-center py-20">載入中...</div>
+          <div className="text-gray-400 text-center py-20">Loading...</div>
         )}
       </main>
     </>
