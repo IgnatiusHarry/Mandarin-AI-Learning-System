@@ -3,6 +3,10 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+const isPlaceholder =
+  !SUPABASE_URL || SUPABASE_URL.includes("placeholder") || SUPABASE_URL === "https://placeholder.supabase.co";
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
@@ -11,6 +15,10 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isPlaceholder) {
+      setError("Supabase belum dikonfigurasi. Isi .env.local dengan keys asli dulu.");
+      return;
+    }
     setLoading(true);
     setError("");
 
@@ -35,6 +43,24 @@ export default function LoginPage() {
           <h1 className="text-4xl font-bold text-red-600 mb-1">明老師</h1>
           <p className="text-gray-500 text-sm">Mandarin AI Learning System</p>
         </div>
+
+        {/* Setup guide — shown when Supabase not configured */}
+        {isPlaceholder && (
+          <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm">
+            <p className="font-semibold text-amber-700 mb-2">⚙️ Setup diperlukan</p>
+            <p className="text-amber-600 mb-3">Isi file <code className="bg-amber-100 px-1 rounded">frontend/.env.local</code> dengan keys dari Supabase:</p>
+            <ol className="text-amber-700 space-y-1 list-decimal list-inside">
+              <li>Buka <a href="https://supabase.com" target="_blank" className="underline">supabase.com</a> → project kamu</li>
+              <li>Settings → API → copy <strong>Project URL</strong> & <strong>anon key</strong></li>
+              <li>Edit <code className="bg-amber-100 px-1 rounded">frontend/.env.local</code></li>
+              <li>Restart: <code className="bg-amber-100 px-1 rounded">npm run dev</code></li>
+            </ol>
+            <div className="mt-3 bg-amber-100 rounded p-2 font-mono text-xs text-amber-800 break-all">
+              NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co<br />
+              NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+            </div>
+          </div>
+        )}
 
         {sent ? (
           <div className="text-center">
