@@ -35,8 +35,15 @@ function LoginForm() {
       options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
     });
     setLoading(false);
-    if (error) setError(error.message);
-    else setSent(true);
+    if (error) {
+      if (error.message.toLowerCase().includes("rate limit") || error.status === 429) {
+        setError("Too many requests — Supabase limit reached. Please wait ~1 hour, or check your inbox for a previously sent link.");
+      } else {
+        setError(error.message);
+      }
+    } else {
+      setSent(true);
+    }
   };
 
   return (

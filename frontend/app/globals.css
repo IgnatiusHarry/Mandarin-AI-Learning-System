@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 :root {
+  color-scheme: light;
   --duo-green: #58CC02;
   --duo-green-dark: #58A700;
   --duo-blue: #1CB0F6;
@@ -24,7 +25,7 @@
   --font-mono: var(--font-geist-mono);
 }
 
-body {
+html, body {
   background: var(--duo-bg);
   color: var(--duo-text);
   font-family: "DIN Round Pro", "Nunito", Arial, sans-serif;
