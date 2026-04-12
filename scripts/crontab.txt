@@ -1,0 +1,9 @@
+# System cron entries for 明老師 (Ming Laoshi)
+# Add these to your crontab: crontab -e
+# Adjust the domain and secret variable to match your deployment
+
+# Morning briefing at 9:00 AM (Asia/Taipei = UTC+8, so 01:00 UTC)
+0 1 * * * curl -s -X POST -H "X-Cron-Secret: ${CRON_SECRET}" https://mandarin.yourdomain.com/cron/morning-briefing >> /var/log/ming-laoshi-cron.log 2>&1
+
+# Evening summary at 9:00 PM (Asia/Taipei = 13:00 UTC)
+0 13 * * * curl -s -X POST -H "X-Cron-Secret: ${CRON_SECRET}" https://mandarin.yourdomain.com/cron/evening-summary >> /var/log/ming-laoshi-cron.log 2>&1
