@@ -62,7 +62,6 @@ export default function ReviewPage() {
     if (quality >= 3) setCorrect((c) => c + 1);
 
     if (currentIndex + 1 >= cards.length) {
-      // Session done
       const durationSeconds = Math.round((Date.now() - startTime.current) / 1000);
       if (sessionId) {
         await endReviewSession(token, sessionId, cards.length, correct + (quality >= 3 ? 1 : 0), durationSeconds);
@@ -78,7 +77,10 @@ export default function ReviewPage() {
     return (
       <>
         <NavBar />
-        <main className="max-w-5xl mx-auto px-4 py-20 text-center text-gray-400">Loading...</main>
+        <main className="max-w-2xl mx-auto px-4 py-20 text-center">
+          <div className="text-5xl animate-bounce mb-4">🦉</div>
+          <p className="text-[#AFAFAF] font-bold uppercase tracking-wider">Loading...</p>
+        </main>
       </>
     );
   }
@@ -87,12 +89,15 @@ export default function ReviewPage() {
     return (
       <>
         <NavBar />
-        <main className="max-w-5xl mx-auto px-4 py-20 text-center">
-          <div className="text-5xl mb-4">🎉</div>
-          <h2 className="text-xl font-bold text-gray-800 mb-2">All done for today!</h2>
-          <p className="text-gray-500 mb-6">No cards due. Come back tomorrow!</p>
-          <Link href="/dashboard" className="bg-red-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-red-700">
-            Back to Dashboard
+        <main className="max-w-2xl mx-auto px-4 py-20 text-center">
+          <div className="text-6xl mb-4">🎉</div>
+          <h2 className="text-2xl font-black text-[#3C3C3C] mb-2">All caught up!</h2>
+          <p className="text-[#AFAFAF] font-medium mb-8">No cards due right now. Come back tomorrow!</p>
+          <Link
+            href="/dashboard"
+            className="inline-block bg-[#58CC02] text-white border-b-4 border-[#58A700] rounded-2xl px-8 py-3 font-bold uppercase tracking-wide text-sm transition-all active:border-b-0 active:mt-1 hover:bg-[#4CAF00]"
+          >
+            BACK TO HOME
           </Link>
         </main>
       </>
@@ -104,25 +109,29 @@ export default function ReviewPage() {
     return (
       <>
         <NavBar />
-        <main className="max-w-5xl mx-auto px-4 py-16 text-center">
-          <div className="text-5xl mb-4">🏆</div>
-          <h2 className="text-xl font-bold text-gray-800 mb-2">Session Complete!</h2>
-          <div className="flex justify-center gap-8 my-6">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-gray-800">{cards.length}</div>
-              <div className="text-sm text-gray-500">Reviewed</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-green-600">{correct}</div>
-              <div className="text-sm text-gray-500">Correct</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-blue-600">{accuracy}%</div>
-              <div className="text-sm text-gray-500">Accuracy</div>
-            </div>
+        <main className="max-w-2xl mx-auto px-4 py-16 text-center">
+          <div className="text-6xl mb-4">🏆</div>
+          <h2 className="text-2xl font-black text-[#3C3C3C] mb-2">Session Complete!</h2>
+          <p className="text-[#AFAFAF] font-medium mb-8">Great work keeping up your streak!</p>
+
+          <div className="grid grid-cols-3 gap-4 mb-10 max-w-sm mx-auto">
+            {[
+              { value: cards.length, label: "Reviewed", color: "text-[#1CB0F6]" },
+              { value: correct, label: "Correct", color: "text-[#58CC02]" },
+              { value: `${accuracy}%`, label: "Accuracy", color: "text-[#FF9600]" },
+            ].map(({ value, label, color }) => (
+              <div key={label} className="bg-white border-2 border-[#E5E5E5] rounded-3xl p-4">
+                <div className={`text-3xl font-black ${color}`}>{value}</div>
+                <div className="text-xs font-bold text-[#AFAFAF] uppercase tracking-wide mt-1">{label}</div>
+              </div>
+            ))}
           </div>
-          <Link href="/dashboard" className="bg-red-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-red-700">
-            Back to Dashboard
+
+          <Link
+            href="/dashboard"
+            className="inline-block bg-[#58CC02] text-white border-b-4 border-[#58A700] rounded-2xl px-8 py-3 font-bold uppercase tracking-wide text-sm transition-all active:border-b-0 active:mt-1 hover:bg-[#4CAF00]"
+          >
+            BACK TO HOME
           </Link>
         </main>
       </>
@@ -130,21 +139,24 @@ export default function ReviewPage() {
   }
 
   const card = cards[currentIndex];
-  const progress = ((currentIndex) / cards.length) * 100;
+  const progress = (currentIndex / cards.length) * 100;
 
   return (
     <>
       <NavBar />
-      <main className="max-w-5xl mx-auto px-4 py-8">
-        {/* Progress bar */}
+      <main className="max-w-2xl mx-auto px-4 py-8">
+        {/* Progress bar row */}
         <div className="flex items-center gap-3 mb-8">
-          <div className="flex-1 bg-gray-100 rounded-full h-2">
+          <Link href="/dashboard" className="text-[#AFAFAF] hover:text-[#3C3C3C] transition-colors font-bold text-lg">
+            ✕
+          </Link>
+          <div className="flex-1 duo-progress">
             <div
-              className="bg-red-500 h-2 rounded-full transition-all duration-300"
+              className="duo-progress-fill"
               style={{ width: `${progress}%` }}
             />
           </div>
-          <span className="text-sm text-gray-500 whitespace-nowrap">
+          <span className="text-sm font-bold text-[#AFAFAF] whitespace-nowrap">
             {currentIndex + 1} / {cards.length}
           </span>
         </div>
