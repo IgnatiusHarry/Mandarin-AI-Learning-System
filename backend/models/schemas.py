@@ -9,6 +9,7 @@ class MessageRequest(BaseModel):
     telegram_id: int
     text: str
     message_type: str = "text"
+    supabase_auth_id: UUID | None = None
 
 
 class MessageResponse(BaseModel):
@@ -22,6 +23,10 @@ class AddWordRequest(BaseModel):
     pinyin: str
     meaning_en: str
     meaning_id: str | None = None
+
+
+class LinkTelegramRequest(BaseModel):
+    telegram_id: int
 
 
 class ReviewAnswerRequest(BaseModel):

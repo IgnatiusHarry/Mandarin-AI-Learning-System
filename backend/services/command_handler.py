@@ -13,29 +13,60 @@ def _is_chinese(text: str) -> bool:
     return bool(re.search(r"[\u4e00-\u9fff\u3400-\u4dbf]", text))
 
 
-async def get_or_create_profile(telegram_id: int) -> dict:
-    """Fetch profile by telegram_id, create one if not found."""
+async def get_or_create_profile(telegram_id: int, supabase_auth_id: str | None = None) -> dict:
+    """Fetch profile by telegram_id or link it to an existing web profile."""
     sb = get_supabase()
     result = (
         sb.table("profiles").select("*").eq("telegram_id", telegram_id).limit(1).execute()
     )
     if result.data:
-        return result.data[0]
+        profile = result.data[0]
+        # Link Telegram-first profile to web auth ID once available.
+        if supabase_auth_id and not profile.get("supabase_auth_id"):
+            updated = (
+                sb.table("profiles")
+                .update({"supabase_auth_id": supabase_auth_id})
+                .eq("id", profile["id"])
+                .execute()
+            )
+            if updated.data:
+                return updated.data[0]
+        return profile
+
+    # If OpenClaw can provide web auth ID, reuse the same profile to keep data unified.
+    if supabase_auth_id:
+        web_profile = (
+            sb.table("profiles")
+            .select("*")
+            .eq("supabase_auth_id", supabase_auth_id)
+            .limit(1)
+            .execute()
+        )
+        if web_profile.data:
+            linked = (
+                sb.table("profiles")
+                .update({"telegram_id": telegram_id})
+                .eq("id", web_profile.data[0]["id"])
+                .execute()
+            )
+            if linked.data:
+                return linked.data[0]
+            return web_profile.data[0]
 
     new_profile = (
         sb.table("profiles")
-        .insert({"telegram_id": telegram_id})
+        .insert({"telegram_id": telegram_id, "supabase_auth_id": supabase_auth_id})
         .execute()
     )
     return new_profile.data[0]
 
 
-async def handle_message(telegram_id: int, text: str) -> str:
+async def handle_message(telegram_id: int, text: str, supabase_auth_id: str | None = None) -> str:
     """
     Route incoming text to the correct handler.
     Returns a Markdown-formatted reply string.
     """
-    profile = await get_or_create_profile(telegram_id)
+    profile = await get_or_create_profile(telegram_id, supabase_auth_id=supabase_auth_id)
     user_id = profile["id"]
     text = text.strip()
 

@@ -221,3 +221,18 @@ export async function fetchSubscriptionPlans(token: string) {
     }[]
   >("/api/gamification/subscription/plans", { token });
 }
+
+// ── Profile ───────────────────────────────────────────────────────
+
+export async function linkTelegram(token: string, telegramId: number) {
+  return apiFetch<{
+    status: string;
+    profile_id: string;
+    telegram_id: number;
+    updated: boolean;
+  }>("/api/profile/link-telegram", {
+    method: "POST",
+    token,
+    body: JSON.stringify({ telegram_id: telegramId }),
+  });
+}
