@@ -14,8 +14,7 @@ async def list_vocab(
 ):
     """List all vocabulary for a user (web)."""
     sb = get_supabase()
-    if user_id:
-        uid = str(user_id)
+    uid = str(user_id) if user_id else None
     if not uid:
         auth_uid = jwt.get("sub")
         if not auth_uid:
