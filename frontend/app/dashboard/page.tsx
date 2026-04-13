@@ -8,6 +8,7 @@ import {
   fetchQuests,
   fetchPersonalizedStudyPlan,
   fetchSubscriptionPlans,
+  linkTelegram,
 } from "@/lib/api";
 import { subscribeToVocabChanges } from "@/lib/supabase/realtime";
 import NavBar from "@/components/NavBar";
@@ -60,12 +61,18 @@ export default function DashboardPage() {
   const [studyPlan, setStudyPlan] = useState<StudyPlan | null>(null);
   const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlan[]>([]);
   const [toast, setToast] = useState<string | null>(null);
+  const [telegramId, setTelegramId] = useState<string>("");
+  const [telegramLinked, setTelegramLinked] = useState(false);
+  const [telegramLinking, setTelegramLinking] = useState(false);
+  const [telegramError, setTelegramError] = useState<string | null>(null);
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
       const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
+      setSessionToken(session.access_token);
       try {
         const [s, p, q, sp, subs] = await Promise.all([
           fetchStats(session.access_token),
@@ -91,6 +98,31 @@ export default function DashboardPage() {
     });
     return unsubscribe;
   }, []);
+
+  const handleLinkTelegram = async () => {
+    const id = parseInt(telegramId.trim(), 10);
+    if (!id || isNaN(id)) {
+      setTelegramError("Please enter a valid Telegram numeric ID.");
+      return;
+    }
+    if (!sessionToken) {
+      setTelegramError("Session expired. Please refresh.");
+      return;
+    }
+    setTelegramLinking(true);
+    setTelegramError(null);
+    try {
+      await linkTelegram(sessionToken, id);
+      setTelegramLinked(true);
+      setToast("Telegram linked successfully! 🎉");
+      setTimeout(() => setToast(null), 5000);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to link Telegram.";
+      setTelegramError(msg);
+    } finally {
+      setTelegramLinking(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#F7F7F7]">
@@ -273,6 +305,47 @@ export default function DashboardPage() {
                 </div>
               </div>
             )}
+
+            {/* Connect Telegram */}
+            <div className="mt-8 bg-white border-2 border-[#E5E5E5] rounded-3xl p-6">
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-2xl">📱</span>
+                <h2 className="text-sm font-black uppercase tracking-wider text-[#3C3C3C]">Connect Telegram</h2>
+                {telegramLinked && (
+                  <span className="ml-auto text-xs font-black text-[#58CC02] uppercase tracking-wide">✓ Linked</span>
+                )}
+              </div>
+              <p className="text-xs text-[#AFAFAF] font-semibold mb-4">
+                Link your Telegram account so vocabulary you send to the bot syncs here automatically.
+                Find your Telegram numeric ID via <span className="text-[#1CB0F6]">@userinfobot</span>.
+              </p>
+              {!telegramLinked ? (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="e.g. 841875314"
+                    value={telegramId}
+                    onChange={(e) => setTelegramId(e.target.value)}
+                    className="flex-1 border-2 border-[#E5E5E5] rounded-2xl px-4 py-2 text-sm font-semibold focus:outline-none focus:border-[#1CB0F6] text-[#3C3C3C]"
+                  />
+                  <button
+                    onClick={handleLinkTelegram}
+                    disabled={telegramLinking}
+                    className="bg-[#1CB0F6] text-white rounded-2xl px-5 py-2 text-xs font-black uppercase tracking-wide border-b-4 border-[#1199DD] disabled:opacity-50"
+                  >
+                    {telegramLinking ? "Linking…" : "Link"}
+                  </button>
+                </div>
+              ) : (
+                <div className="bg-[#F0FFF0] border border-[#B3F0B3] rounded-2xl px-4 py-3 text-sm font-bold text-[#58A700]">
+                  ✅ Telegram ID {telegramId} linked. Vocab from bot will appear here!
+                </div>
+              )}
+              {telegramError && (
+                <p className="mt-2 text-xs font-bold text-[#FF4B4B]">{telegramError}</p>
+              )}
+            </div>
           </>
         ) : (
           <div className="flex flex-col items-center justify-center py-32 gap-4">
