@@ -43,18 +43,18 @@ async def get_stats(
         .lte("next_review_at", now)
         .execute()
     )
-    profile = sb.table("profiles").select("streak_days").eq("id", user_id).single().execute()
-    streak = profile.data.get("streak_days", 0) if profile.data else 0
+    profile = sb.table("profiles").select("streak_days").eq("id", user_id).limit(1).execute()
+    streak = profile.data[0].get("streak_days", 0) if profile.data else 0
 
     daily = (
         sb.table("daily_goals")
         .select("actual_reviews")
         .eq("user_id", user_id)
         .eq("goal_date", today)
-        .single()
+        .limit(1)
         .execute()
     )
-    reviewed_today = daily.data.get("actual_reviews", 0) if daily.data else 0
+    reviewed_today = daily.data[0].get("actual_reviews", 0) if daily.data else 0
 
     return UserStats(
         total_words=total.count or 0,
@@ -113,17 +113,25 @@ async def _resolve_user_id(sb, telegram_id: int | None, jwt: dict) -> str:
     from fastapi import HTTPException
     if telegram_id:
         profile = (
-            sb.table("profiles").select("id").eq("telegram_id", telegram_id).single().execute()
+            sb.table("profiles").select("id").eq("telegram_id", telegram_id).limit(1).execute()
         )
         if not profile.data:
             raise HTTPException(status_code=404, detail="User not found")
-        return profile.data["id"]
+        return profile.data[0]["id"]
     uid = jwt.get("sub")
     if not uid:
         raise HTTPException(status_code=401, detail="Cannot identify user")
     profile = (
-        sb.table("profiles").select("id").eq("supabase_auth_id", uid).single().execute()
+        sb.table("profiles").select("id").eq("supabase_auth_id", uid).limit(1).execute()
     )
-    if not profile.data:
-        raise HTTPException(status_code=404, detail="Profile not linked")
-    return profile.data["id"]
+    if profile.data:
+        return profile.data[0]["id"]
+    # Auto-create profile for first-time web users
+    new_profile = (
+        sb.table("profiles")
+        .insert({"supabase_auth_id": uid})
+        .execute()
+    )
+    if not new_profile.data:
+        raise HTTPException(status_code=500, detail="Failed to create profile")
+    return new_profile.data[0]["id"]

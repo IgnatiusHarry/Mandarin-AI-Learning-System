@@ -46,13 +46,13 @@ async def submit_answer(
         .select("*")
         .eq("user_id", user_id)
         .eq("vocabulary_id", str(body.vocabulary_id))
-        .single()
+        .limit(1)
         .execute()
     )
     if not review.data:
         raise HTTPException(status_code=404, detail="Review record not found")
 
-    row = review.data
+    row = review.data[0]
     srs = calculate_next_review(
         ease_factor=row["ease_factor"],
         interval=row["interval_days"],
@@ -173,12 +173,12 @@ async def _resolve_user_id(sb, telegram_id: int | None, jwt: dict) -> str:
             sb.table("profiles")
             .select("id")
             .eq("telegram_id", telegram_id)
-            .single()
+            .limit(1)
             .execute()
         )
         if not profile.data:
             raise HTTPException(status_code=404, detail="User not found")
-        return profile.data["id"]
+        return profile.data[0]["id"]
     uid = jwt.get("sub")
     if not uid:
         raise HTTPException(status_code=401, detail="Cannot identify user")
@@ -187,12 +187,20 @@ async def _resolve_user_id(sb, telegram_id: int | None, jwt: dict) -> str:
         sb.table("profiles")
         .select("id")
         .eq("supabase_auth_id", uid)
-        .single()
+        .limit(1)
         .execute()
     )
-    if not profile.data:
-        raise HTTPException(status_code=404, detail="Profile not linked")
-    return profile.data["id"]
+    if profile.data:
+        return profile.data[0]["id"]
+    # Auto-create profile for web users on first access
+    new_profile = (
+        sb.table("profiles")
+        .insert({"supabase_auth_id": uid})
+        .execute()
+    )
+    if not new_profile.data:
+        raise HTTPException(status_code=500, detail="Failed to create profile")
+    return new_profile.data[0]["id"]
 
 
 def _upsert_daily_review_count(sb, user_id: str, quality: int):

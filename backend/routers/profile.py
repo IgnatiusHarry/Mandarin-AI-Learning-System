@@ -22,11 +22,13 @@ async def link_telegram(
         sb.table("profiles")
         .select("id")
         .eq("supabase_auth_id", auth_id)
-        .single()
+        .limit(1)
         .execute()
     )
     if not profile.data:
         raise HTTPException(status_code=404, detail="Profile not found")
+
+    profile_id = profile.data[0]["id"]
 
     existing_tg = (
         sb.table("profiles")
@@ -35,7 +37,7 @@ async def link_telegram(
         .limit(1)
         .execute()
     )
-    if existing_tg.data and existing_tg.data[0]["id"] != profile.data["id"]:
+    if existing_tg.data and existing_tg.data[0]["id"] != profile_id:
         raise HTTPException(
             status_code=409,
             detail="Telegram ID already linked to another profile",
@@ -44,13 +46,13 @@ async def link_telegram(
     updated = (
         sb.table("profiles")
         .update({"telegram_id": body.telegram_id})
-        .eq("id", profile.data["id"])
+        .eq("id", profile_id)
         .execute()
     )
 
     return {
         "status": "ok",
-        "profile_id": profile.data["id"],
+        "profile_id": profile_id,
         "telegram_id": body.telegram_id,
         "updated": bool(updated.data),
     }

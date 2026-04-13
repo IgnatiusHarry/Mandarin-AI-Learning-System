@@ -16,7 +16,7 @@ async def list_vocab(
     sb = get_supabase()
     if user_id:
         uid = str(user_id)
-    else:
+    if not uid:
         auth_uid = jwt.get("sub")
         if not auth_uid:
             raise HTTPException(status_code=400, detail="user_id required")
@@ -24,13 +24,22 @@ async def list_vocab(
             sb.table("profiles")
             .select("id")
             .eq("supabase_auth_id", auth_uid)
-            .single()
+            .limit(1)
             .execute()
         )
-        uid = profile.data.get("id") if profile.data else None
+        if profile.data:
+            uid = profile.data[0]["id"]
+        else:
+            # Auto-create profile for first-time web users
+            new_profile = (
+                sb.table("profiles")
+                .insert({"supabase_auth_id": auth_uid})
+                .execute()
+            )
+            uid = new_profile.data[0]["id"] if new_profile.data else None
 
     if not uid:
-        raise HTTPException(status_code=400, detail="user_id required")
+        return []
 
     result = (
         sb.table("vocabulary")
@@ -53,12 +62,12 @@ async def get_vocab(
         sb.table("vocabulary")
         .select("*, user_reviews(*)")
         .eq("id", str(vocab_id))
-        .single()
+        .limit(1)
         .execute()
     )
     if not result.data:
         raise HTTPException(status_code=404, detail="Vocabulary not found")
-    return result.data
+    return result.data[0]
 
 
 @router.delete("/{vocab_id}", status_code=204)

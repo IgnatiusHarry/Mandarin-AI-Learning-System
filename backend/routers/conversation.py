@@ -47,13 +47,13 @@ async def send_message(
         sb.table("conversations")
         .select("*")
         .eq("id", str(body.conversation_id))
-        .single()
+        .limit(1)
         .execute()
     )
     if not convo_result.data:
         raise HTTPException(status_code=404, detail="Conversation not found")
 
-    convo = convo_result.data
+    convo = convo_result.data[0]
 
     # Fetch message history (last 20)
     history_result = (
@@ -183,12 +183,12 @@ async def _resolve_user_id(sb, telegram_id: int | None, jwt: dict) -> str:
             sb.table("profiles")
             .select("id")
             .eq("telegram_id", telegram_id)
-            .single()
+            .limit(1)
             .execute()
         )
         if not profile.data:
             raise HTTPException(status_code=404, detail="User not found")
-        return profile.data["id"]
+        return profile.data[0]["id"]
     uid = jwt.get("sub")
     if not uid:
         raise HTTPException(status_code=401, detail="Cannot identify user")
@@ -196,9 +196,17 @@ async def _resolve_user_id(sb, telegram_id: int | None, jwt: dict) -> str:
         sb.table("profiles")
         .select("id")
         .eq("supabase_auth_id", uid)
-        .single()
+        .limit(1)
         .execute()
     )
-    if not profile.data:
-        raise HTTPException(status_code=404, detail="Profile not linked")
-    return profile.data["id"]
+    if profile.data:
+        return profile.data[0]["id"]
+    # Auto-create profile for first-time web users
+    new_profile = (
+        sb.table("profiles")
+        .insert({"supabase_auth_id": uid})
+        .execute()
+    )
+    if not new_profile.data:
+        raise HTTPException(status_code=500, detail="Failed to create profile")
+    return new_profile.data[0]["id"]

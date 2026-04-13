@@ -288,11 +288,11 @@ async def _resolve_profile(sb, jwt: dict) -> dict:
         sb.table("profiles")
         .select("*")
         .eq("supabase_auth_id", uid)
-        .single()
+        .limit(1)
         .execute()
     )
     if profile.data:
-        return profile.data
+        return profile.data[0]
 
     created = (
         sb.table("profiles")
