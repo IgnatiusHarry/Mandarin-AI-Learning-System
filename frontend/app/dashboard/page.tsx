@@ -2,7 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { fetchStats } from "@/lib/api";
+import {
+  fetchStats,
+  fetchGamificationProfile,
+  fetchQuests,
+  fetchPersonalizedStudyPlan,
+  fetchSubscriptionPlans,
+} from "@/lib/api";
 import { subscribeToVocabChanges } from "@/lib/supabase/realtime";
 import NavBar from "@/components/NavBar";
 import Link from "next/link";
@@ -16,8 +22,43 @@ interface Stats {
   words_reviewed_today: number;
 }
 
+interface GamificationProfile {
+  xp: number;
+  level: number;
+  hearts: number;
+  subscription_tier: string;
+  streak_days: number;
+}
+
+interface Quest {
+  id: string;
+  title: string;
+  target: number;
+  progress: number;
+  reward_xp: number;
+}
+
+interface StudyPlan {
+  streak_days: number;
+  daily_goal_words: number;
+  focus_words: { word: string; pinyin: string; meaning: string; reason: string }[];
+  missions: { id: string; title: string; description: string; target: number; metric: string }[];
+}
+
+interface SubscriptionPlan {
+  id: string;
+  name: string;
+  price_idr: number;
+  interval: string;
+  features: string[];
+}
+
 export default function DashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null);
+  const [profile, setProfile] = useState<GamificationProfile | null>(null);
+  const [quests, setQuests] = useState<Quest[]>([]);
+  const [studyPlan, setStudyPlan] = useState<StudyPlan | null>(null);
+  const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlan[]>([]);
   const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
@@ -26,8 +67,18 @@ export default function DashboardPage() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
       try {
-        const s = await fetchStats(session.access_token);
+        const [s, p, q, sp, subs] = await Promise.all([
+          fetchStats(session.access_token),
+          fetchGamificationProfile(session.access_token),
+          fetchQuests(session.access_token),
+          fetchPersonalizedStudyPlan(session.access_token),
+          fetchSubscriptionPlans(session.access_token),
+        ]);
         setStats(s);
+        setProfile(p);
+        setQuests(q);
+        setStudyPlan(sp);
+        setSubscriptionPlans(subs);
       } catch {}
     };
     load();
@@ -80,6 +131,88 @@ export default function DashboardPage() {
               </div>
             </div>
 
+            {profile && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+                <div className="bg-white border-2 border-[#E5E5E5] rounded-3xl p-5 duo-card">
+                  <div className="text-xs font-bold uppercase tracking-wide text-[#AFAFAF]">Level</div>
+                  <div className="text-3xl font-black text-[#1CB0F6] mt-1">Lv {profile.level}</div>
+                  <div className="text-sm font-semibold text-[#AFAFAF] mt-1">{profile.xp} XP total</div>
+                </div>
+                <div className="bg-white border-2 border-[#E5E5E5] rounded-3xl p-5 duo-card">
+                  <div className="text-xs font-bold uppercase tracking-wide text-[#AFAFAF]">Learning Energy</div>
+                  <div className="text-3xl font-black text-[#FF4B4B] mt-1">❤️ {profile.hearts}</div>
+                  <div className="text-sm font-semibold text-[#AFAFAF] mt-1">Hearts left today</div>
+                </div>
+                <div className="bg-white border-2 border-[#E5E5E5] rounded-3xl p-5 duo-card">
+                  <div className="text-xs font-bold uppercase tracking-wide text-[#AFAFAF]">Subscription</div>
+                  <div className="text-3xl font-black text-[#58CC02] mt-1">
+                    {profile.subscription_tier === "free" ? "Free" : "Pro"}
+                  </div>
+                  <div className="text-sm font-semibold text-[#AFAFAF] mt-1">
+                    {profile.subscription_tier === "free" ? "Upgrade for unlimited practice" : "Premium learning active"}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {studyPlan && (
+              <div className="bg-white border-2 border-[#E5E5E5] rounded-3xl p-6 mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-sm font-black uppercase tracking-wider text-[#3C3C3C]">Personalized Study Mission</h2>
+                  <span className="text-xs font-bold text-[#58CC02]">Goal {studyPlan.daily_goal_words} words/day</span>
+                </div>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-wide text-[#AFAFAF] mb-2">Focus words</p>
+                    <div className="space-y-2">
+                      {studyPlan.focus_words.slice(0, 4).map((w) => (
+                        <div key={w.word} className="rounded-2xl bg-[#F7F7F7] border border-[#E5E5E5] px-3 py-2">
+                          <p className="font-black text-[#3C3C3C]">{w.word} <span className="text-sm font-semibold text-[#AFAFAF]">{w.pinyin}</span></p>
+                          <p className="text-xs text-[#AFAFAF]">{w.meaning} · {w.reason}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-wide text-[#AFAFAF] mb-2">Missions</p>
+                    <div className="space-y-2">
+                      {studyPlan.missions.map((m) => (
+                        <div key={m.id} className="rounded-2xl bg-[#F0FFF0] border border-[#B3F0B3] px-3 py-2">
+                          <p className="font-black text-[#3C3C3C] text-sm">{m.title}</p>
+                          <p className="text-xs text-[#58A700]">{m.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {quests.length > 0 && (
+              <div className="bg-white border-2 border-[#E5E5E5] rounded-3xl p-6 mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-sm font-black uppercase tracking-wider text-[#3C3C3C]">Daily Quests</h2>
+                  <Link href="/leaderboard" className="text-xs font-black text-[#1CB0F6] uppercase tracking-wide">View Rank</Link>
+                </div>
+                <div className="space-y-3">
+                  {quests.map((q) => {
+                    const pct = Math.min(100, (q.progress / q.target) * 100);
+                    return (
+                      <div key={q.id}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm font-bold text-[#3C3C3C]">{q.title}</span>
+                          <span className="text-xs font-bold text-[#AFAFAF]">{q.progress}/{q.target} · +{q.reward_xp} XP</span>
+                        </div>
+                        <div className="duo-progress">
+                          <div className="duo-progress-fill" style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Stat grid */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-8">
               <StatCard icon="🔥" label="Streak" value={stats.streak_days} suffix="days" accent="#FF9600" />
@@ -116,6 +249,30 @@ export default function DashboardPage() {
                 color="#CE82FF"
               />
             </div>
+
+            {subscriptionPlans.length > 0 && (
+              <div className="mt-8">
+                <h2 className="text-xs font-black text-[#AFAFAF] uppercase tracking-widest mb-3">Upgrade your learning</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {subscriptionPlans.map((plan) => (
+                    <div key={plan.id} className="bg-white border-2 border-[#E5E5E5] rounded-3xl p-5 duo-card">
+                      <p className="text-lg font-black text-[#3C3C3C]">{plan.name}</p>
+                      <p className="text-sm font-bold text-[#58CC02] mt-1">
+                        Rp {plan.price_idr.toLocaleString("id-ID")} / {plan.interval}
+                      </p>
+                      <ul className="mt-3 space-y-1 text-xs text-[#AFAFAF] font-semibold">
+                        {plan.features.slice(0, 3).map((f) => (
+                          <li key={f}>• {f}</li>
+                        ))}
+                      </ul>
+                      <button className="mt-4 w-full bg-[#1CB0F6] text-white rounded-2xl py-2.5 text-xs font-black uppercase tracking-wide border-b-4 border-[#1199DD]">
+                        Coming Soon
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </>
         ) : (
           <div className="flex flex-col items-center justify-center py-32 gap-4">

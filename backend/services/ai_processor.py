@@ -7,7 +7,15 @@ settings = get_settings()
 _client: anthropic.Anthropic | None = None
 
 
+def _anthropic_enabled() -> bool:
+    key = (settings.anthropic_api_key or "").strip()
+    return bool(key and key != "placeholder")
+
+
 def get_anthropic() -> anthropic.Anthropic:
+    if not _anthropic_enabled():
+        raise RuntimeError("Anthropic API key is not configured")
+
     global _client
     if _client is None:
         _client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
@@ -64,7 +72,11 @@ If you made corrections, list them. If you introduced new vocab, list the words.
 
 async def extract_vocab(text: str) -> list[VocabItem]:
     """Call Claude to extract vocabulary from pasted Chinese text."""
-    client = get_anthropic()
+    try:
+        client = get_anthropic()
+    except RuntimeError:
+        return []
+
     prompt = VOCAB_EXTRACTION_PROMPT.format(text=text)
 
     message = client.messages.create(
@@ -97,6 +109,14 @@ async def chat_response(
     Send a conversation message to Claude.
     Returns (reply_text, corrections_list, new_vocab_list).
     """
+    if not _anthropic_enabled():
+        fallback = (
+            "我現在在離線教學模式。"
+            "請用中文再說一次你的句子，我會幫你練習語法和用字。\n"
+            f"你剛剛說的是：{user_message}"
+        )
+        return fallback, [], []
+
     client = get_anthropic()
 
     system = CONVERSATION_SYSTEM_PROMPT.format(
@@ -107,12 +127,16 @@ async def chat_response(
 
     messages = history + [{"role": "user", "content": user_message}]
 
-    response = client.messages.create(
-        model="claude-sonnet-4-5",
-        max_tokens=1024,
-        system=system,
-        messages=messages,
-    )
+    try:
+        response = client.messages.create(
+            model="claude-sonnet-4-5",
+            max_tokens=1024,
+            system=system,
+            messages=messages,
+        )
+    except Exception:
+        fallback = "我現在連線有點不穩定。請你換一句簡單的中文，我會馬上回覆你。"
+        return fallback, [], []
 
     full_reply = response.content[0].text
 

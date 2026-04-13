@@ -11,6 +11,7 @@ const navItems = [
   { href: "/vocabulary", label: "Words", icon: "📖" },
   { href: "/conversation", label: "Chat", icon: "💬" },
   { href: "/progress", label: "Progress", icon: "📈" },
+  { href: "/leaderboard", label: "Rank", icon: "🏆" },
 ];
 
 export default function NavBar() {

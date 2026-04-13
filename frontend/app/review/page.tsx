@@ -30,14 +30,20 @@ export default function ReviewPage() {
   const [correct, setCorrect] = useState(0);
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const startTime = useRef(Date.now());
   const cardStart = useRef(Date.now());
 
-  useEffect(() => {
-    const load = async () => {
+  const load = async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
       const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!session) {
+        setCards([]);
+        return;
+      }
       setToken(session.access_token);
 
       const due = await fetchDueCards(session.access_token);
@@ -47,8 +53,15 @@ export default function ReviewPage() {
         const sess = await startReviewSession(session.access_token);
         setSessionId(sess.id);
       }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to load review cards.";
+      setLoadError(message);
+    } finally {
       setLoading(false);
-    };
+    }
+  };
+
+  useEffect(() => {
     load();
   }, []);
 
@@ -57,14 +70,15 @@ export default function ReviewPage() {
 
     const responseMs = Date.now() - cardStart.current;
     const card = cards[currentIndex];
+    const nextCorrect = correct + (quality >= 3 ? 1 : 0);
     await submitReviewAnswer(token, card.vocabulary.id, quality, responseMs);
 
-    if (quality >= 3) setCorrect((c) => c + 1);
+    if (quality >= 3) setCorrect(nextCorrect);
 
     if (currentIndex + 1 >= cards.length) {
       const durationSeconds = Math.round((Date.now() - startTime.current) / 1000);
       if (sessionId) {
-        await endReviewSession(token, sessionId, cards.length, correct + (quality >= 3 ? 1 : 0), durationSeconds);
+        await endReviewSession(token, sessionId, cards.length, nextCorrect, durationSeconds);
       }
       setDone(true);
     } else {
@@ -86,6 +100,26 @@ export default function ReviewPage() {
   }
 
   if (cards.length === 0) {
+    if (loadError) {
+      return (
+        <>
+          <NavBar />
+          <main className="max-w-2xl mx-auto px-4 py-20 text-center">
+            <div className="text-6xl mb-4">⚠️</div>
+            <h2 className="text-2xl font-black text-[#3C3C3C] mb-2">Loading failed</h2>
+            <p className="text-[#AFAFAF] font-medium mb-8">{loadError}</p>
+            <button
+              type="button"
+              onClick={load}
+              className="inline-block bg-[#58CC02] text-white border-b-4 border-[#58A700] rounded-2xl px-8 py-3 font-bold uppercase tracking-wide text-sm transition-all active:border-b-0 active:mt-1 hover:bg-[#4CAF00]"
+            >
+              RETRY
+            </button>
+          </main>
+        </>
+      );
+    }
+
     return (
       <>
         <NavBar />

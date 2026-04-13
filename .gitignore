@@ -20,6 +20,8 @@ frontend/.next/
 frontend/out/
 frontend/.env.local
 frontend/.env
+frontend/.env.*
+!frontend/.env.example
 
 # OS
 .DS_Store
@@ -27,3 +29,6 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Local editor history
+.history/

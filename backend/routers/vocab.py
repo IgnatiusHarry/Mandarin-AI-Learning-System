@@ -14,7 +14,21 @@ async def list_vocab(
 ):
     """List all vocabulary for a user (web)."""
     sb = get_supabase()
-    uid = str(user_id) if user_id else jwt.get("sub")
+    if user_id:
+        uid = str(user_id)
+    else:
+        auth_uid = jwt.get("sub")
+        if not auth_uid:
+            raise HTTPException(status_code=400, detail="user_id required")
+        profile = (
+            sb.table("profiles")
+            .select("id")
+            .eq("supabase_auth_id", auth_uid)
+            .single()
+            .execute()
+        )
+        uid = profile.data.get("id") if profile.data else None
+
     if not uid:
         raise HTTPException(status_code=400, detail="user_id required")
 

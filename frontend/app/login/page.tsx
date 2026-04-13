@@ -1,17 +1,28 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { getPublicEnv, isPublicEnvConfigured } from "@/lib/env";
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+const { supabaseUrl: SUPABASE_URL, supabaseAnonKey: SUPABASE_ANON_KEY } = getPublicEnv();
 const isPlaceholder =
-  !SUPABASE_URL || SUPABASE_URL.includes("placeholder") || SUPABASE_URL === "https://placeholder.supabase.co";
+  !isPublicEnvConfigured() ||
+  !SUPABASE_URL ||
+  SUPABASE_URL.includes("placeholder") ||
+  SUPABASE_URL === "https://placeholder.supabase.co" ||
+  !SUPABASE_ANON_KEY ||
+  SUPABASE_ANON_KEY.includes("placeholder");
 
 function LoginForm() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [authMode, setAuthMode] = useState<"password" | "magic">("password");
+  const [isSignUp, setIsSignUp] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
   const [loading, setLoading] = useState(false);
   const searchParams = useSearchParams();
 
@@ -21,7 +32,7 @@ function LoginForm() {
     }
   }, [searchParams]);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleMagicLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isPlaceholder) {
       setError("Supabase is not configured yet. Fill in .env.local with real keys first.");
@@ -29,6 +40,7 @@ function LoginForm() {
     }
     setLoading(true);
     setError("");
+    setInfo("");
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOtp({
       email,
@@ -44,6 +56,49 @@ function LoginForm() {
     } else {
       setSent(true);
     }
+  };
+
+  const handlePasswordAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isPlaceholder) {
+      setError("Supabase is not configured yet. Fill in .env.local with real keys first.");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    setInfo("");
+    const supabase = createClient();
+
+    if (isSignUp) {
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      setLoading(false);
+
+      if (error) {
+        setError(error.message);
+        return;
+      }
+
+      if (data.session) {
+        router.push("/dashboard");
+        router.refresh();
+        return;
+      }
+
+      setInfo("Account created. Check your email to confirm, then sign in with password.");
+      return;
+    }
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setLoading(false);
+
+    if (error) {
+      setError(error.message);
+      return;
+    }
+
+    router.push("/dashboard");
+    router.refresh();
   };
 
   return (
@@ -106,9 +161,42 @@ function LoginForm() {
         ) : (
           <div className="w-full">
             <h2 className="text-3xl font-black text-[#3C3C3C] mb-2">Get started</h2>
-            <p className="text-[#AFAFAF] mb-8">Enter your email to receive a magic sign-in link.</p>
+            <p className="text-[#AFAFAF] mb-6">
+              {authMode === "password"
+                ? "Sign in using your email and password."
+                : "Enter your email to receive a magic sign-in link."}
+            </p>
 
-            <form onSubmit={handleLogin} className="space-y-4">
+            <div className="mb-6 grid grid-cols-2 rounded-2xl border-2 border-[#E5E5E5] p-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode("password");
+                  setError("");
+                  setInfo("");
+                }}
+                className={`rounded-xl py-2 text-sm font-bold transition-colors ${
+                  authMode === "password" ? "bg-[#58CC02] text-white" : "text-[#7A7A7A]"
+                }`}
+              >
+                Email + Password
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode("magic");
+                  setError("");
+                  setInfo("");
+                }}
+                className={`rounded-xl py-2 text-sm font-bold transition-colors ${
+                  authMode === "magic" ? "bg-[#58CC02] text-white" : "text-[#7A7A7A]"
+                }`}
+              >
+                Magic Link
+              </button>
+            </div>
+
+            <form onSubmit={authMode === "password" ? handlePasswordAuth : handleMagicLogin} className="space-y-4">
               <input
                 type="email"
                 required
@@ -117,9 +205,25 @@ function LoginForm() {
                 placeholder="your@email.com"
                 className="w-full border-2 border-[#E5E5E5] rounded-2xl px-5 py-4 text-[#3C3C3C] font-medium text-base focus:outline-none focus:border-[#58CC02] transition-colors placeholder:text-[#AFAFAF]"
               />
+              {authMode === "password" && (
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Your password"
+                  className="w-full border-2 border-[#E5E5E5] rounded-2xl px-5 py-4 text-[#3C3C3C] font-medium text-base focus:outline-none focus:border-[#58CC02] transition-colors placeholder:text-[#AFAFAF]"
+                />
+              )}
               {error && (
                 <div className="bg-[#FF4B4B]/10 border-2 border-[#FF4B4B]/30 rounded-2xl px-4 py-3">
                   <p className="text-[#FF4B4B] text-sm font-semibold">{error}</p>
+                </div>
+              )}
+              {info && (
+                <div className="bg-[#58CC02]/10 border-2 border-[#58CC02]/30 rounded-2xl px-4 py-3">
+                  <p className="text-[#2F7A00] text-sm font-semibold">{info}</p>
                 </div>
               )}
               <button
@@ -127,12 +231,38 @@ function LoginForm() {
                 disabled={loading}
                 className="w-full bg-[#58CC02] text-white rounded-2xl py-4 font-black text-base uppercase tracking-wide border-b-4 border-[#58A700] hover:bg-[#62D900] active:border-b-0 active:mt-1 disabled:opacity-50 transition-all"
               >
-                {loading ? "Sending..." : "GET STARTED"}
+                {loading
+                  ? authMode === "password"
+                    ? isSignUp
+                      ? "Creating account..."
+                      : "Signing in..."
+                    : "Sending..."
+                  : authMode === "password"
+                    ? isSignUp
+                      ? "CREATE ACCOUNT"
+                      : "SIGN IN"
+                    : "GET STARTED"}
               </button>
+
+              {authMode === "password" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSignUp((prev) => !prev);
+                    setError("");
+                    setInfo("");
+                  }}
+                  className="w-full text-[#1CB0F6] font-bold text-sm hover:underline"
+                >
+                  {isSignUp ? "Already have an account? Sign in" : "No account yet? Create one"}
+                </button>
+              )}
             </form>
 
             <div className="mt-6 text-center">
-              <p className="text-[#AFAFAF] text-sm">No password needed — just your email.</p>
+              <p className="text-[#AFAFAF] text-sm">
+                {authMode === "password" ? "Use at least 6 characters for your password." : "No password needed — just your email."}
+              </p>
             </div>
           </div>
         )}

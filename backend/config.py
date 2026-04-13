@@ -19,6 +19,10 @@ class Settings(BaseSettings):
 
     # Cron
     cron_secret: str
+    cron_timezone: str = "Asia/Taipei"
+    cron_morning_hour: int = 9
+    cron_evening_hour: int = 21
+    enable_internal_scheduler: bool = False
 
     # App
     app_env: str = "development"

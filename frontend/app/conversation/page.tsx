@@ -6,6 +6,7 @@ import {
   startConversation,
   sendConversationMessage,
   fetchConversations,
+  fetchConversationHistory,
 } from "@/lib/api";
 import NavBar from "@/components/NavBar";
 
@@ -72,6 +73,20 @@ export default function ConversationPage() {
     setStarting(false);
   };
 
+  const handleSelectConversation = async (convo: Conversation) => {
+    if (!token) return;
+    setActiveConvoId(convo.id);
+    setTopic(convo.topic);
+    setLoading(true);
+    try {
+      const history = await fetchConversationHistory(token, convo.id);
+      setMessages(history as unknown as Message[]);
+    } catch {
+      setMessages([]);
+    }
+    setLoading(false);
+  };
+
   const handleSend = async () => {
     if (!input.trim() || !token || !activeConvoId || loading) return;
     const userMessage = input.trim();
@@ -113,7 +128,7 @@ export default function ConversationPage() {
             {conversations.map((c) => (
               <button
                 key={c.id}
-                onClick={() => setActiveConvoId(c.id)}
+                onClick={() => void handleSelectConversation(c)}
                 className={`w-full text-left rounded-2xl px-3 py-2.5 text-sm font-medium transition-all border-2 ${
                   activeConvoId === c.id
                     ? "bg-[#F0FFF0] border-[#58CC02] text-[#3C3C3C]"
@@ -199,6 +214,11 @@ export default function ConversationPage() {
 
               {/* Messages */}
               <div className="flex-1 overflow-y-auto space-y-3 pb-4">
+                {messages.length === 0 && !loading && (
+                  <div className="text-center py-12 text-sm text-[#AFAFAF] font-medium">
+                    No messages yet. Start the conversation below.
+                  </div>
+                )}
                 {messages.map((msg, i) => (
                   <div
                     key={i}

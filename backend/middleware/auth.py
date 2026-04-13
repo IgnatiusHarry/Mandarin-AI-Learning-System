@@ -1,7 +1,7 @@
 from fastapi import Request, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from config import get_settings
-import jwt
+import httpx
 
 security = HTTPBearer(auto_error=False)
 
@@ -33,14 +33,31 @@ async def verify_supabase_jwt(
     token = credentials.credentials
 
     try:
-        # Supabase JWTs are signed with the JWT secret (anon key is the public key)
-        # For verification, we use the JWT secret from Supabase project settings
-        payload = jwt.decode(
-            token,
-            settings.supabase_anon_key,
-            algorithms=["HS256"],
-            audience="authenticated",
-        )
-        return payload
-    except jwt.InvalidTokenError as e:
-        raise HTTPException(status_code=401, detail=f"Invalid token: {e}")
+        # Validate token directly against Supabase Auth API.
+        # This avoids brittle local JWT verification assumptions.
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            response = await client.get(
+                f"{settings.supabase_url}/auth/v1/user",
+                headers={
+                    "apikey": settings.supabase_anon_key,
+                    "Authorization": f"Bearer {token}",
+                },
+            )
+
+        if response.status_code != 200:
+            raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+        user = response.json()
+        if not user or not user.get("id"):
+            raise HTTPException(status_code=401, detail="Invalid user payload")
+
+        return {
+            "sub": user["id"],
+            "email": user.get("email"),
+            "aud": user.get("aud"),
+            "role": user.get("role"),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Token verification failed: {e}")

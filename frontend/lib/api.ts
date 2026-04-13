@@ -1,4 +1,5 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8001";
+const API_BASE = "/api/backend";
+const API_TIMEOUT_MS = 8000;
 
 async function apiFetch<T>(
   path: string,
@@ -13,7 +14,25 @@ async function apiFetch<T>(
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${API_URL}${path}`, { ...init, headers });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      ...init,
+      headers,
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error("Request timeout. Please try again.");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+
   if (!res.ok) {
     const err = await res.text();
     throw new Error(err || `API error ${res.status}`);
@@ -143,4 +162,62 @@ export async function fetchConversationHistory(
 
 export async function fetchConversations(token: string) {
   return apiFetch<Record<string, unknown>[]>("/api/conversation", { token });
+}
+
+// ── Gamification & Personalization ───────────────────────────────
+
+export async function fetchGamificationProfile(token: string) {
+  return apiFetch<{
+    xp: number;
+    level: number;
+    hearts: number;
+    subscription_tier: string;
+    streak_days: number;
+  }>("/api/gamification/profile", { token });
+}
+
+export async function fetchQuests(token: string) {
+  return apiFetch<
+    {
+      id: string;
+      title: string;
+      target: number;
+      progress: number;
+      reward_xp: number;
+    }[]
+  >("/api/gamification/quests", { token });
+}
+
+export async function fetchPersonalizedStudyPlan(token: string) {
+  return apiFetch<{
+    streak_days: number;
+    daily_goal_words: number;
+    focus_words: { word: string; pinyin: string; meaning: string; reason: string }[];
+    missions: { id: string; title: string; description: string; target: number; metric: string }[];
+  }>("/api/gamification/study-plan", { token });
+}
+
+export async function fetchLeaderboard(token: string) {
+  return apiFetch<
+    {
+      user_id: string;
+      display_name: string;
+      streak_days: number;
+      mastered_words: number;
+      reviews_30d: number;
+      score: number;
+    }[]
+  >("/api/gamification/leaderboard", { token });
+}
+
+export async function fetchSubscriptionPlans(token: string) {
+  return apiFetch<
+    {
+      id: string;
+      name: string;
+      price_idr: number;
+      interval: string;
+      features: string[];
+    }[]
+  >("/api/gamification/subscription/plans", { token });
 }
