@@ -95,6 +95,23 @@ curl -X POST https://<your-backend-domain>/api/message \
   -d '{"telegram_id": 841875314, "text": "/stats"}'
 ```
 
+4. One-command smoke test (PowerShell):
+```powershell
+pwsh scripts/smoke_live_endpoints.ps1 \
+  -BackendUrl "https://backend-blond-seven-35.vercel.app" \
+  -FrontendUrl "https://frontend-six-weld-37.vercel.app"
+```
+
+Optional authenticated checks:
+```powershell
+pwsh scripts/smoke_live_endpoints.ps1 \
+  -BackendUrl "https://backend-blond-seven-35.vercel.app" \
+  -FrontendUrl "https://frontend-six-weld-37.vercel.app" \
+  -OpenClawApiKey "<OPENCLAW_API_SECRET>" \
+  -SupabaseAccessToken "<SUPABASE_USER_ACCESS_TOKEN>" \
+  -TelegramId 841875314
+```
+
 ## 6. Definition of Done
 
 Ming dianggap siap pakai website + database jika:
