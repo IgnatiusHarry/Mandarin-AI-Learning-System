@@ -2,9 +2,67 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from db.supabase_client import get_supabase
 from middleware.auth import verify_supabase_jwt
-from models.schemas import LinkTelegramRequest
+from models.schemas import LinkTelegramRequest, ProfileUpdateRequest
 
 router = APIRouter()
+
+
+@router.get("/me")
+async def get_profile(jwt: dict = Depends(verify_supabase_jwt)):
+    """Return current user profile for personalization settings."""
+    sb = get_supabase()
+    auth_id = jwt.get("sub")
+    if not auth_id:
+        raise HTTPException(status_code=401, detail="Cannot identify user")
+
+    profile = (
+        sb.table("profiles")
+        .select("id, display_name, hsk_level, native_language, daily_goal_words, timezone, telegram_id")
+        .eq("supabase_auth_id", auth_id)
+        .limit(1)
+        .execute()
+    )
+    if not profile.data:
+        raise HTTPException(status_code=404, detail="Profile not found")
+
+    return profile.data[0]
+
+
+@router.patch("/me")
+async def patch_profile(
+    body: ProfileUpdateRequest,
+    jwt: dict = Depends(verify_supabase_jwt),
+):
+    """Update personalization fields on the current profile."""
+    sb = get_supabase()
+    auth_id = jwt.get("sub")
+    if not auth_id:
+        raise HTTPException(status_code=401, detail="Cannot identify user")
+
+    profile = (
+        sb.table("profiles")
+        .select("id")
+        .eq("supabase_auth_id", auth_id)
+        .limit(1)
+        .execute()
+    )
+    if not profile.data:
+        raise HTTPException(status_code=404, detail="Profile not found")
+
+    profile_id = profile.data[0]["id"]
+    payload = body.model_dump(exclude_unset=True)
+    if not payload:
+        raise HTTPException(status_code=400, detail="No fields to update")
+
+    updated = (
+        sb.table("profiles")
+        .update(payload)
+        .eq("id", profile_id)
+        .execute()
+    )
+    if not updated.data:
+        raise HTTPException(status_code=500, detail="Update failed")
+    return updated.data[0]
 
 
 @router.post("/link-telegram")

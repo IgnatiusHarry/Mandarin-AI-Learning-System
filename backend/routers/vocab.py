@@ -3,6 +3,7 @@ from uuid import UUID
 from db.supabase_client import get_supabase
 from middleware.auth import verify_openclaw_secret, verify_supabase_jwt
 from models.schemas import VocabItem
+from services.ai_processor import LESSON_VOCAB, LESSON_TITLES
 
 router = APIRouter()
 
@@ -48,6 +49,50 @@ async def list_vocab(
         .execute()
     )
     return result.data
+
+
+@router.get("/words")
+async def list_vocab_words(
+    lesson_tag: str | None = Query(default=None),
+    jwt: dict = Depends(verify_supabase_jwt),
+):
+    """Return compact word list (word, pinyin, tone_numbers, meaning_en, meaning_id) for client-side lookup."""
+    sb = get_supabase()
+    uid: str | None = None
+    auth_uid = jwt.get("sub")
+    if auth_uid:
+        profile = (
+            sb.table("profiles")
+            .select("id")
+            .eq("supabase_auth_id", auth_uid)
+            .limit(1)
+            .execute()
+        )
+        if profile.data:
+            uid = profile.data[0]["id"]
+    if not uid:
+        return []
+    query = (
+        sb.table("vocabulary")
+        .select("word, pinyin, tone_numbers, meaning_en, meaning_id")
+        .eq("user_id", uid)
+    )
+
+    if lesson_tag and lesson_tag in LESSON_VOCAB:
+        query = query.in_("word", LESSON_VOCAB[lesson_tag])
+
+    result = query.execute()
+    return result.data
+
+
+@router.get("/lesson-options")
+async def list_lesson_review_options(jwt: dict = Depends(verify_supabase_jwt)):
+    """Tags that can filter review / vocab scope (from configured lesson decks)."""
+    _ = jwt  # require login; list is static per deployment
+    return [
+        {"tag": tag, "title": LESSON_TITLES.get(tag, tag)}
+        for tag in sorted(LESSON_VOCAB.keys())
+    ]
 
 
 @router.get("/{vocab_id}")

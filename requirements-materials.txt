@@ -1,0 +1,2 @@
+# Offline curriculum pipeline (PDF + Pleco). Install when running materials_pipeline.
+pymupdf>=1.24.0

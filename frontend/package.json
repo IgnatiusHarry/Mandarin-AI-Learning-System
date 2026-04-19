@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "check:secrets": "node scripts/check-frontend-secrets.mjs",
+    "ensure-catalog": "node scripts/ensure-curriculum-catalog.mjs",
+    "prebuild": "node scripts/ensure-curriculum-catalog.mjs",
     "dev": "next dev",
     "build": "npm run check:secrets && next build",
     "start": "next start"
@@ -14,7 +16,8 @@
     "next": "16.2.3",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "recharts": "^3.8.1"
+    "recharts": "^3.8.1",
+    "swr": "^2.4.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

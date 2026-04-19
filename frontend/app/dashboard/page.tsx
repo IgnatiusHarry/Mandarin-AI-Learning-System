@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import useSWR, { useSWRConfig } from "swr";
 import {
   fetchStats,
   fetchGamificationProfile,
@@ -9,10 +9,14 @@ import {
   fetchPersonalizedStudyPlan,
   fetchSubscriptionPlans,
   linkTelegram,
+  fetchCurrentProfile,
+  updateCurrentProfile,
 } from "@/lib/api";
 import { subscribeToVocabChanges } from "@/lib/supabase/realtime";
 import NavBar from "@/components/NavBar";
 import Link from "next/link";
+import { useAuth } from "@/lib/auth-context";
+import { isLearnerKey, learnerKeys } from "@/lib/learner-keys";
 
 interface Stats {
   total_words: number;
@@ -44,6 +48,9 @@ interface StudyPlan {
   daily_goal_words: number;
   focus_words: { word: string; pinyin: string; meaning: string; reason: string }[];
   missions: { id: string; title: string; description: string; target: number; metric: string }[];
+  due_cards_count?: number;
+  weak_words_count?: number;
+  coach_tip?: string;
 }
 
 interface SubscriptionPlan {
@@ -55,49 +62,103 @@ interface SubscriptionPlan {
 }
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [profile, setProfile] = useState<GamificationProfile | null>(null);
-  const [quests, setQuests] = useState<Quest[]>([]);
-  const [studyPlan, setStudyPlan] = useState<StudyPlan | null>(null);
-  const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlan[]>([]);
+  const { token, ready } = useAuth();
+  const { mutate } = useSWRConfig();
+
+  const statsSwr = useSWR(
+    ready && token ? learnerKeys.stats(token) : null,
+    (key) => fetchStats(key[2] as string)
+  );
+  const gamificationSwr = useSWR(
+    ready && token ? learnerKeys.gamificationProfile(token) : null,
+    (key) => fetchGamificationProfile(key[2] as string)
+  );
+  const questsSwr = useSWR(
+    ready && token ? learnerKeys.quests(token) : null,
+    (key) => fetchQuests(key[2] as string)
+  );
+  const studyPlanSwr = useSWR(
+    ready && token ? learnerKeys.studyPlan(token) : null,
+    (key) => fetchPersonalizedStudyPlan(key[2] as string)
+  );
+  const subsSwr = useSWR(
+    ready && token ? learnerKeys.subscriptionPlans(token) : null,
+    (key) => fetchSubscriptionPlans(key[2] as string)
+  );
+  const profileSwr = useSWR(
+    ready && token ? learnerKeys.profile(token) : null,
+    (key) => fetchCurrentProfile(key[2] as string)
+  );
+
+  const stats = statsSwr.data ?? null;
+  const profile = gamificationSwr.data ?? null;
+  const quests = questsSwr.data ?? [];
+  const studyPlan = (studyPlanSwr.data ?? null) as StudyPlan | null;
+  const subscriptionPlans = subsSwr.data ?? [];
+  const userProfile = profileSwr.data ?? null;
+
   const [toast, setToast] = useState<string | null>(null);
   const [telegramId, setTelegramId] = useState<string>("");
   const [telegramLinked, setTelegramLinked] = useState(false);
   const [telegramLinking, setTelegramLinking] = useState(false);
   const [telegramError, setTelegramError] = useState<string | null>(null);
-  const [sessionToken, setSessionToken] = useState<string | null>(null);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    hsk_level: 3,
+    native_language: "",
+    daily_goal_words: 5,
+  });
 
   useEffect(() => {
-    const load = async () => {
-      const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      setSessionToken(session.access_token);
-      try {
-        const [s, p, q, sp, subs] = await Promise.all([
-          fetchStats(session.access_token),
-          fetchGamificationProfile(session.access_token),
-          fetchQuests(session.access_token),
-          fetchPersonalizedStudyPlan(session.access_token),
-          fetchSubscriptionPlans(session.access_token),
-        ]);
-        setStats(s);
-        setProfile(p);
-        setQuests(q);
-        setStudyPlan(sp);
-        setSubscriptionPlans(subs);
-      } catch {}
-    };
-    load();
+    if (!userProfile) {
+      return;
+    }
+    setProfileForm({
+      hsk_level: userProfile.hsk_level,
+      native_language: userProfile.native_language ?? "",
+      daily_goal_words: userProfile.daily_goal_words,
+    });
+  }, [userProfile]);
 
+  useEffect(() => {
     const unsubscribe = subscribeToVocabChanges((word) => {
       const w = word as { word?: string };
       setToast(`"${w.word ?? "新詞"}" added from Telegram!`);
       setTimeout(() => setToast(null), 4000);
-      load();
+      void mutate((key) => isLearnerKey(key));
     });
     return unsubscribe;
-  }, []);
+  }, [mutate]);
+
+  const sessionToken = token;
+  const statsLoading = ready && token && !stats && !statsSwr.error;
+  const statsFailed = ready && Boolean(token) && Boolean(statsSwr.error) && !stats;
+
+  const handleSaveLearningProfile = async () => {
+    if (!sessionToken) {
+      return;
+    }
+    setSavingProfile(true);
+    try {
+      await updateCurrentProfile(sessionToken, {
+        hsk_level: profileForm.hsk_level,
+        native_language: profileForm.native_language.trim() || "Indonesian",
+        daily_goal_words: profileForm.daily_goal_words,
+      });
+      await Promise.all([
+        profileSwr.mutate(),
+        studyPlanSwr.mutate(),
+        statsSwr.mutate(),
+      ]);
+      setToast("Learning profile saved ✓");
+      setTimeout(() => setToast(null), 3000);
+    } catch {
+      setToast("Could not save profile");
+      setTimeout(() => setToast(null), 3000);
+    } finally {
+      setSavingProfile(false);
+    }
+  };
 
   const handleLinkTelegram = async () => {
     const id = parseInt(telegramId.trim(), 10);
@@ -134,9 +195,11 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <main className="max-w-4xl mx-auto px-4 py-8 pb-24 md:pb-8">
+      <main className="max-w-4xl mx-auto px-3 sm:px-4 py-6 sm:py-8 pb-mobile-main">
 
-        {stats ? (
+        {statsLoading ? (
+          <DashboardStatsSkeleton />
+        ) : stats ? (
           <>
             {/* Streak banner */}
             {stats.streak_days > 0 && (
@@ -187,12 +250,95 @@ export default function DashboardPage() {
               </div>
             )}
 
+            {userProfile && (
+              <div className="bg-white border-2 border-[#E5E5E5] rounded-3xl p-6 mb-6">
+                <h2 className="text-sm font-black uppercase tracking-wider text-[#3C3C3C] mb-3">
+                  Your learning profile
+                </h2>
+                <p className="text-xs text-[#AFAFAF] font-semibold mb-4">
+                  小明 uses this to tune chat difficulty, grammar hints, and daily targets for you.
+                </p>
+                <div className="grid md:grid-cols-3 gap-3">
+                  <label className="flex flex-col gap-1 text-xs font-bold text-[#AFAFAF] uppercase tracking-wide">
+                    HSK target
+                    <select
+                      value={profileForm.hsk_level}
+                      onChange={(e) =>
+                        setProfileForm((f) => ({ ...f, hsk_level: Number(e.target.value) }))
+                      }
+                      className="border-2 border-[#E5E5E5] rounded-2xl px-3 py-2 text-sm font-bold text-[#3C3C3C] bg-white"
+                    >
+                      {[1, 2, 3, 4, 5, 6].map((n) => (
+                        <option key={n} value={n}>
+                          HSK {n}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1 text-xs font-bold text-[#AFAFAF] uppercase tracking-wide">
+                    Native language
+                    <input
+                      value={profileForm.native_language}
+                      onChange={(e) =>
+                        setProfileForm((f) => ({ ...f, native_language: e.target.value }))
+                      }
+                      placeholder="e.g. Indonesian"
+                      className="border-2 border-[#E5E5E5] rounded-2xl px-3 py-2 text-sm font-semibold text-[#3C3C3C]"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-xs font-bold text-[#AFAFAF] uppercase tracking-wide">
+                    Daily new words goal
+                    <input
+                      type="number"
+                      min={1}
+                      max={50}
+                      value={profileForm.daily_goal_words}
+                      onChange={(e) =>
+                        setProfileForm((f) => ({
+                          ...f,
+                          daily_goal_words: Math.min(50, Math.max(1, Number(e.target.value) || 1)),
+                        }))
+                      }
+                      className="border-2 border-[#E5E5E5] rounded-2xl px-3 py-2 text-sm font-semibold text-[#3C3C3C]"
+                    />
+                  </label>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void handleSaveLearningProfile()}
+                  disabled={savingProfile}
+                  className="mt-4 bg-[#1CB0F6] text-white rounded-2xl px-5 py-2.5 text-xs font-black uppercase tracking-wide border-b-4 border-[#1199DD] disabled:opacity-50"
+                >
+                  {savingProfile ? "Saving…" : "Save profile"}
+                </button>
+              </div>
+            )}
+
             {studyPlan && (
               <div className="bg-white border-2 border-[#E5E5E5] rounded-3xl p-6 mb-6">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-sm font-black uppercase tracking-wider text-[#3C3C3C]">Personalized Study Mission</h2>
                   <span className="text-xs font-bold text-[#58CC02]">Goal {studyPlan.daily_goal_words} words/day</span>
                 </div>
+                {studyPlan.coach_tip && (
+                  <p className="text-sm font-medium text-[#3C3C3C] bg-[#EDF9FF] border border-[#B3E5FC] rounded-2xl px-4 py-3 mb-4">
+                    {studyPlan.coach_tip}
+                  </p>
+                )}
+                {(studyPlan.due_cards_count !== undefined || studyPlan.weak_words_count !== undefined) && (
+                  <div className="flex flex-wrap gap-2 mb-4 text-xs font-bold text-[#AFAFAF]">
+                    {studyPlan.due_cards_count !== undefined && (
+                      <span className="rounded-full bg-[#FFF4E0] text-[#9C7700] px-3 py-1 border border-[#FFD699]">
+                        Due now: {studyPlan.due_cards_count}
+                      </span>
+                    )}
+                    {studyPlan.weak_words_count !== undefined && (
+                      <span className="rounded-full bg-[#FFF0F0] text-[#C62828] px-3 py-1 border border-[#FFCCCC]">
+                        Weak: {studyPlan.weak_words_count}
+                      </span>
+                    )}
+                  </div>
+                )}
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
                     <p className="text-xs font-black uppercase tracking-wide text-[#AFAFAF] mb-2">Focus words</p>
@@ -347,13 +493,59 @@ export default function DashboardPage() {
               )}
             </div>
           </>
+        ) : statsFailed ? (
+          <div className="flex flex-col items-center justify-center py-32 gap-4">
+            <div className="text-5xl">⚠️</div>
+            <p className="text-[#AFAFAF] font-semibold text-center max-w-sm">
+              Could not load stats. Check your connection and try again.
+            </p>
+            <button
+              type="button"
+              onClick={() => void statsSwr.mutate()}
+              className="bg-[#58CC02] text-white rounded-2xl px-6 py-2 text-sm font-black uppercase tracking-wide border-b-4 border-[#58A700]"
+            >
+              Retry
+            </button>
+          </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-32 gap-4">
-            <div className="text-5xl animate-bounce">🦉</div>
-            <p className="text-[#AFAFAF] font-semibold">Loading your progress...</p>
+            <div className="text-5xl">🦉</div>
+            <p className="text-[#AFAFAF] font-semibold text-center max-w-sm">
+              {ready && !token
+                ? "Please sign in to see your dashboard."
+                : "Nothing to show yet."}
+            </p>
           </div>
         )}
       </main>
+    </div>
+  );
+}
+
+function DashboardStatsSkeleton() {
+  return (
+    <div className="space-y-6 animate-pulse">
+      <div className="h-24 rounded-3xl bg-[#ECECEC] border-2 border-[#E5E5E5]" />
+      <div className="h-20 rounded-3xl bg-[#ECECEC] border-2 border-[#E5E5E5]" />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-28 rounded-3xl bg-[#ECECEC] border-2 border-[#E5E5E5]" />
+        ))}
+      </div>
+      <div className="h-56 rounded-3xl bg-[#ECECEC] border-2 border-[#E5E5E5]" />
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <div key={i} className="h-28 rounded-3xl bg-[#ECECEC] border-2 border-[#E5E5E5]" />
+        ))}
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-40 rounded-3xl bg-[#ECECEC] border-2 border-[#E5E5E5]" />
+        ))}
+      </div>
+      <p className="text-center text-xs font-bold text-[#AFAFAF] uppercase tracking-wider">
+        Loading your progress…
+      </p>
     </div>
   );
 }

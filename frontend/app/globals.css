@@ -28,7 +28,21 @@
 html, body {
   background: var(--duo-bg);
   color: var(--duo-text);
-  font-family: "DIN Round Pro", "Nunito", Arial, sans-serif;
+  /* Geist for Latin UI; system + Noto-style fallbacks so 漢字 / 注音 / mixed imports don’t render as □ */
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, "PingFang TC",
+    "PingFang SC", "Hiragino Sans GB", "Noto Sans TC", "Noto Sans SC",
+    "Microsoft JhengHei", "Microsoft YaHei", sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Space above fixed bottom tab bar + home indicator (iOS) */
+.pb-mobile-main {
+  padding-bottom: calc(5.75rem + env(safe-area-inset-bottom, 0px));
+}
+@media (min-width: 768px) {
+  .pb-mobile-main {
+    padding-bottom: 2rem;
+  }
 }
 
 /* Duolingo 3D button press effect */

@@ -1,13 +1,42 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from uuid import UUID
 from datetime import datetime, timezone
+import re
 
 from db.supabase_client import get_supabase
 from middleware.auth import verify_supabase_jwt
 from models.schemas import ConversationStartRequest, ConversationMessageRequest
-from services.ai_processor import chat_response
+from services.ai_processor import chat_response, LESSON_VOCAB
 
 router = APIRouter()
+
+
+def _detect_lesson_tag(topic: str) -> str | None:
+    """Detect if the topic corresponds to a known lesson."""
+    if topic in LESSON_VOCAB:
+        return topic
+
+    match = re.search(r"第\s*(\d+)\s*課", topic)
+    if match:
+        candidate = f"時代華語-{int(match.group(1))}"
+        if candidate in LESSON_VOCAB:
+            return candidate
+
+    if "時代華語-10" in topic:
+        return "時代華語-10"
+
+    return None
+
+
+def _detect_lesson_mode(topic: str) -> str:
+    lowered = topic.lower()
+    if "vocabulary" in lowered or "詞彙" in topic:
+        return "vocabulary"
+    if "grammar" in lowered or "文法" in topic:
+        return "grammar"
+    if "quiz" in lowered or "soal" in lowered or "問題" in topic:
+        return "quiz"
+    return "mixed"
 
 
 @router.post("/start")
@@ -55,6 +84,17 @@ async def send_message(
 
     convo = convo_result.data[0]
 
+    profile_result = (
+        sb.table("profiles")
+        .select("display_name, hsk_level, native_language")
+        .eq("id", user_id)
+        .limit(1)
+        .execute()
+    )
+    profile = profile_result.data[0] if profile_result.data else {}
+    user_level = profile.get("hsk_level") or 3
+    native_language = profile.get("native_language") or "Indonesian"
+
     # Fetch message history (last 20)
     history_result = (
         sb.table("conversation_messages")
@@ -87,6 +127,27 @@ async def send_message(
     )
     weak_words = [r["vocabulary"]["word"] for r in (weak.data or []) if r.get("vocabulary")]
 
+    # Detect lesson focus and load chapter vocab from user's deck
+    convo_topic = convo.get("topic", "")
+    lesson_tag = _detect_lesson_tag(convo_topic)
+    lesson_mode = _detect_lesson_mode(convo_topic) if lesson_tag else None
+    lesson_vocab: list[dict] = []
+    if lesson_tag:
+        word_list = LESSON_VOCAB.get(lesson_tag, [])
+        if word_list:
+            lesson_result = (
+                sb.table("vocabulary")
+                .select("word,pinyin,meaning_en,meaning_id,hsk_level")
+                .eq("user_id", user_id)
+                .in_("word", word_list)
+                .execute()
+            )
+            lesson_vocab = [
+                row
+                for row in (lesson_result.data or [])
+                if row.get("hsk_level") is None or row.get("hsk_level") <= user_level + 1
+            ]
+
     # Get AI response
     reply, corrections, new_vocab = await chat_response(
         conversation_id=str(body.conversation_id),
@@ -94,7 +155,12 @@ async def send_message(
         history=history,
         known_words=known_words,
         weak_words=weak_words,
-        topic=convo.get("topic", "free conversation"),
+        topic=convo_topic or "free conversation",
+        lesson_tag=lesson_tag,
+        lesson_vocab=lesson_vocab,
+        lesson_mode=lesson_mode,
+        user_level=user_level,
+        native_language=native_language,
     )
 
     # Save user message

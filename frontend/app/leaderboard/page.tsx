@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import useSWR from "swr";
 import { fetchLeaderboard } from "@/lib/api";
 import NavBar from "@/components/NavBar";
+import { useAuth } from "@/lib/auth-context";
+import { learnerKeys } from "@/lib/learner-keys";
 
 interface LeaderboardRow {
   user_id: string;
@@ -15,35 +16,18 @@ interface LeaderboardRow {
 }
 
 export default function LeaderboardPage() {
-  const [rows, setRows] = useState<LeaderboardRow[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const load = async () => {
-      const supabase = createClient();
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const data = await fetchLeaderboard(session.access_token);
-        setRows(data);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    void load();
-  }, []);
+  const { token, ready } = useAuth();
+  const { data, isLoading } = useSWR(
+    ready && token ? learnerKeys.leaderboard(token) : null,
+    (key) => fetchLeaderboard(key[2] as string)
+  );
+  const rows = data ?? [];
+  const loading = ready && Boolean(token) && isLoading && !data;
 
   return (
     <>
       <NavBar />
-      <main className="max-w-3xl mx-auto px-4 py-8 pb-24 md:pb-8">
+      <main className="max-w-3xl mx-auto px-3 sm:px-4 py-6 sm:py-8 pb-mobile-main">
         <div className="bg-white border-2 border-[#E5E5E5] rounded-3xl p-6">
           <div className="text-center mb-6">
             <div className="text-5xl mb-2">🏆</div>

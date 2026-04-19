@@ -102,7 +102,7 @@ function LoginForm() {
   };
 
   return (
-    <main className="min-h-screen bg-white flex">
+    <main className="min-h-[100dvh] min-h-screen bg-white flex pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)]">
       {/* Left — branding */}
       <div className="hidden lg:flex flex-col justify-center items-center flex-1 bg-[#58CC02] px-12">
         <div className="text-center text-white">
@@ -125,7 +125,7 @@ function LoginForm() {
       </div>
 
       {/* Right — form */}
-      <div className="flex-1 flex flex-col justify-center items-center px-8 py-12 max-w-lg mx-auto w-full">
+      <div className="flex-1 flex flex-col justify-center items-center px-4 sm:px-8 py-10 sm:py-12 max-w-lg mx-auto w-full">
         {/* Mobile logo */}
         <div className="lg:hidden text-center mb-10">
           <div className="text-6xl mb-3">🦉</div>

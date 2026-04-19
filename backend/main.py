@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from config import get_settings
-from routers import message, vocab, review, conversation, progress, cron, gamification, profile
+from routers import message, vocab, review, conversation, progress, cron, gamification, profile, curriculum
 from services.scheduler import start_scheduler, stop_scheduler
 
 
@@ -41,6 +41,7 @@ app.include_router(review.router, prefix="/api/review", tags=["review"])
 app.include_router(conversation.router, prefix="/api/conversation", tags=["conversation"])
 app.include_router(progress.router, prefix="/api/stats", tags=["progress"])
 app.include_router(profile.router, prefix="/api/profile", tags=["profile"])
+app.include_router(curriculum.router, prefix="/api/curriculum", tags=["curriculum"])
 app.include_router(gamification.router, prefix="/api/gamification", tags=["gamification"])
 app.include_router(cron.router, prefix="/cron", tags=["cron"])
 

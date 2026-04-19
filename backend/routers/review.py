@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from uuid import UUID
 from datetime import datetime, timezone, date
+import re
 
 from db.supabase_client import get_supabase
 from middleware.auth import verify_supabase_jwt
 from models.schemas import ReviewAnswerRequest
+from services.ai_processor import LESSON_VOCAB
 from services.srs import calculate_next_review, update_average_quality
 
 router = APIRouter()
@@ -13,6 +15,7 @@ router = APIRouter()
 @router.get("/due")
 async def get_due_cards(
     telegram_id: int | None = Query(default=None),
+    lesson_tag: str | None = Query(default=None),
     jwt: dict = Depends(verify_supabase_jwt),
 ):
     """Return all cards due for review today."""
@@ -28,7 +31,17 @@ async def get_due_cards(
         .order("next_review_at")
         .execute()
     )
-    return result.data
+    cards = result.data or []
+
+    normalized_lesson_tag = _normalize_lesson_tag(lesson_tag)
+    if normalized_lesson_tag:
+        lesson_words = set(LESSON_VOCAB.get(normalized_lesson_tag, []))
+        cards = [
+            row for row in cards
+            if (row.get("vocabulary") or {}).get("word") in lesson_words
+        ]
+
+    return cards
 
 
 @router.post("/answer")
@@ -146,6 +159,7 @@ async def end_session(
 @router.get("/weak")
 async def get_weak_words(
     telegram_id: int | None = Query(default=None),
+    lesson_tag: str | None = Query(default=None),
     jwt: dict = Depends(verify_supabase_jwt),
 ):
     """Words with average_quality < 3 AND reviewed >= 3 times."""
@@ -162,7 +176,17 @@ async def get_weak_words(
         .limit(20)
         .execute()
     )
-    return result.data
+    rows = result.data or []
+
+    normalized_lesson_tag = _normalize_lesson_tag(lesson_tag)
+    if normalized_lesson_tag:
+        lesson_words = set(LESSON_VOCAB.get(normalized_lesson_tag, []))
+        rows = [
+            row for row in rows
+            if (row.get("vocabulary") or {}).get("word") in lesson_words
+        ]
+
+    return rows
 
 
 # ── internal helpers ─────────────────────────────────────────────────
@@ -210,3 +234,20 @@ def _upsert_daily_review_count(sb, user_id: str, quality: int):
         "upsert_daily_review",
         {"p_user_id": user_id, "p_date": today, "p_correct": correct},
     ).execute()
+
+
+def _normalize_lesson_tag(raw_lesson_tag: str | None) -> str | None:
+    if not raw_lesson_tag:
+        return None
+
+    cleaned = raw_lesson_tag.strip()
+    if cleaned in LESSON_VOCAB:
+        return cleaned
+
+    match = re.search(r"第\s*(\d+)\s*課", cleaned)
+    if match:
+        candidate = f"時代華語-{int(match.group(1))}"
+        if candidate in LESSON_VOCAB:
+            return candidate
+
+    return None

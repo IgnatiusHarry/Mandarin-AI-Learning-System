@@ -29,6 +29,14 @@ class LinkTelegramRequest(BaseModel):
     telegram_id: int
 
 
+class ProfileUpdateRequest(BaseModel):
+    display_name: str | None = Field(default=None, max_length=120)
+    hsk_level: int | None = Field(default=None, ge=1, le=6)
+    native_language: str | None = Field(default=None, max_length=64)
+    daily_goal_words: int | None = Field(default=None, ge=1, le=100)
+    timezone: str | None = Field(default=None, max_length=64)
+
+
 class ReviewAnswerRequest(BaseModel):
     telegram_id: int | None = None
     user_id: UUID | None = None

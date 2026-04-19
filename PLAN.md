@@ -44,6 +44,23 @@ Daily Cron (APScheduler)
 
 Weak Word Radar
 
+### Web client performance & caching (shipped)
+- **SWR** shared cache across Home, Words, Progress, Rank, Chat (dedupe window ~2 min, no refetch on tab focus).
+- **AuthProvider** resolves Supabase session once; pages reuse the same access token instead of calling `getSession()` on every navigation.
+- **NavBar prefetch** on hover/focus warms the cache for likely next pages.
+- **Realtime**: vocabulary inserts from Telegram trigger `mutate()` on all `learner/*` keys so the dashboard stays fresh without a full reload.
+
+### Personalization (shipped / ongoing)
+- **Profile**: `GET/PATCH /api/profile/me` for `hsk_level`, `native_language`, `daily_goal_words` (dashboard “Your learning profile”).
+- **Study plan**: `GET /api/gamification/study-plan` uses weak + due counts, HSK filter on focus words, localized `coach_tip`, and per-user mission targets.
+- **Chat**: lesson welcome messages mix **deck words + weak SRS words** from the user; Claude prompt weaves known/weak lists and may add a short explanation in the learner’s native language after Chinese grammar notes.
+- **Review scope**: `GET /api/vocab/lesson-options` drives lesson filters from configured chapter decks.
+
+### Vocabulary list UX (shipped)
+- **Fonts**: global stack includes TC/SC system fonts + Noto-style fallbacks so imported Han / mixed textbook strings don’t render as tofu (□) next to Latin-only fonts.
+- **Book placement**: meanings may include tags like `[M4L5]` or `【M4L5】`; the UI strips them from running text and shows a **Modul · Pelajaran** badge (textbook-style level), matching the “buku” workflow in this plan.
+- **Retention radar**: vocabulary page surfaces **SRS weak words** (avg quality &lt; 3, ≥3 reviews) with next review hints and links to **Review** — same forgetting signal used by SM-2 / `next_review_at` in `user_reviews`.
+
 ### Section 3: Full Supabase SQL Schema
 
 ### Section 4: Supabase Realtime (Telegram → Web sync)
@@ -53,40 +70,43 @@ Weak Word Radar
 ### Section 6: Execution Checklist
 
 Week 1 — Core Loop
-- [ ] Supabase project created + all SQL run
-- [ ] FastAPI backend up + Supabase client connected
+- [x] Supabase project created + all SQL run
+- [x] FastAPI backend up + Supabase client connected (Legacy)
+- [x] Next.js API Routes (New Native Backend)
 - [ ] Telegram bot registered + webhook set
-- [ ] Paste Chinese text -> AI extracts vocab -> saved to DB
-- [ ] Bot replies with word breakdown + tone info
+- [x] Paste Chinese text -> AI extracts vocab -> saved to DB (bot path)
+- [x] Bot replies with word breakdown + tone info
 
 Week 2 — SRS Review
-- [ ] SM-2 algorithm implemented
+- [x] SM-2 algorithm implemented
 - [ ] /review command working (Telegram flashcard flow)
-- [ ] Review results saved -> mastery_level updated
+- [x] Review results saved -> mastery_level updated (web + API)
 - [ ] /stats command shows daily progress
 
 Week 3 — AI Conversation
 - [ ] /chat command starts Mandarin conversation
-- [ ] Conversation history stored in Supabase
-- [ ] Grammar/tone corrections embedded in AI responses
+- [x] Conversation history stored in Supabase (web + API)
+- [x] Grammar/tone corrections embedded in AI responses
 - [ ] /weak command shows trouble words
 
 Week 4 — Daily System
 - [ ] Morning cron (9 AM push)
 - [ ] Evening summary cron
-- [ ] Streak tracking logic
+- [x] Streak tracking logic (exposed via API / dashboard)
 - [ ] Milestone notifications (10 words, 50 words, 100 words mastered)
 
 Week 5-6 — Web App
-- [ ] Next.js dashboard: streak, due cards, word count
-- [ ] Flashcard review UI (web)
-- [ ] Supabase Realtime: Telegram -> Web live sync
-- [ ] Vocabulary list with mastery badges + tone display
+- [x] Next.js dashboard: streak, due cards, word count
+- [x] Flashcard review UI (web)
+- [x] Native Next.js API Routes (bypassing Python backend)
+- [x] Vocabulary list with mastery badges + tone display
+- [x] Shared Memory: Telegram <-> Web integration
+- [x] Auth Fix: Specific linkage for 'ternakduit99@gmail.com'
 
 Week 7-8 — Polish
-- [ ] AI chat web UI
-- [ ] Progress charts (recharts: words over time, mastery curve)
-- [ ] Tone visualization (color-coded by tone 1-4)
+- [x] AI chat web UI
+- [x] Progress charts (recharts: words over time, mastery curve)
+- [x] Tone visualization (color-coded by tone 1-4)
 - [ ] Full end-to-end test
 
 ## Daily User Flow (Final Vision)

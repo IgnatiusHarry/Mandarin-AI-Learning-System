@@ -1,0 +1,65 @@
+{
+  "pdf_root": "/Users/ignatius_harry/Library/CloudStorage/Dropbox/knowledge/Mandarin",
+  "pleco": null,
+  "options": {
+    "heuristic_vocab": false
+  },
+  "entries": [
+    {
+      "relative_pdf": "NTNU - 當代/課本/當代中文課程1 – 課本.pdf",
+      "name": "當代中文課程1",
+      "slug": "dangdai-course-1",
+      "kind": "ntnu",
+      "series": "當代中文",
+      "volume": 1
+    },
+    {
+      "relative_pdf": "NTNU - 當代/課本/當代中文課程2 – 課本.pdf",
+      "name": "當代中文課程2",
+      "slug": "dangdai-course-2",
+      "kind": "ntnu",
+      "series": "當代中文",
+      "volume": 2
+    },
+    {
+      "relative_pdf": "NTNU - 當代/課本/當代中文課程3 – 課本.pdf",
+      "name": "當代中文課程3",
+      "slug": "dangdai-course-3",
+      "kind": "ntnu",
+      "series": "當代中文",
+      "volume": 3
+    },
+    {
+      "relative_pdf": "NTNU - 當代/課本/當代中文課程4 – 課本.pdf",
+      "name": "當代中文課程4",
+      "slug": "dangdai-course-4",
+      "kind": "ntnu",
+      "series": "當代中文",
+      "volume": 4
+    },
+    {
+      "relative_pdf": "NTNU - 當代/課本/當代中文課程5 – 課本.pdf",
+      "name": "當代中文課程5",
+      "slug": "dangdai-course-5",
+      "kind": "ntnu",
+      "series": "當代中文",
+      "volume": 5
+    },
+    {
+      "relative_pdf": "NTNU - 當代/課本/當代中文課程6 – 課本.pdf",
+      "name": "當代中文課程6",
+      "slug": "dangdai-course-6",
+      "kind": "ntnu",
+      "series": "當代中文",
+      "volume": 6
+    },
+    {
+      "relative_pdf": "Les mandarin - taiwan/private 2/時代華語 2 課程.pdf",
+      "name": "時代華語 2",
+      "slug": "shidai-course-2",
+      "kind": "shidai",
+      "series": "時代華語",
+      "volume": 2
+    }
+  ]
+}

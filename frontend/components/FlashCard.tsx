@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { cleanMeaningField, formatBookPlacement, mergePlacements } from "@/lib/vocabDisplay";
 
 interface FlashCardProps {
   word: string;
@@ -12,6 +13,7 @@ interface FlashCardProps {
   examplePinyin?: string;
   memoryTip?: string;
   onRate: (quality: number) => void;
+  ratingDisabled?: boolean;
 }
 
 // Tone 0=neutral, 1=first, 2=second, 3=third, 4=fourth
@@ -71,12 +73,33 @@ export default function FlashCard({
   examplePinyin,
   memoryTip,
   onRate,
+  ratingDisabled = false,
 }: FlashCardProps) {
   const [revealed, setRevealed] = useState(false);
   const tones = toneNumbers?.split(" ") ?? [];
 
+  const { cleanEn, cleanId, bookLabel } = useMemo(() => {
+    const en = cleanMeaningField(meaningEn);
+    const id = cleanMeaningField(meaningId ?? "");
+    const placement = mergePlacements(en.placement, id.placement);
+    return {
+      cleanEn: en.text || meaningEn,
+      cleanId: id.text,
+      bookLabel: placement ? formatBookPlacement(placement) : null,
+    };
+  }, [meaningEn, meaningId]);
+
+  const cleanExample = useMemo(
+    () => cleanMeaningField(exampleSentence ?? "").text,
+    [exampleSentence]
+  );
+  const cleanTip = useMemo(
+    () => cleanMeaningField(memoryTip ?? "").text,
+    [memoryTip]
+  );
+
   return (
-    <div className="bg-white border-2 border-[#E5E5E5] rounded-3xl p-8 max-w-lg mx-auto">
+    <div className="bg-white border-2 border-[#E5E5E5] rounded-3xl p-8 max-w-lg mx-auto" lang="zh-Hant">
       {/* Character */}
       <div className="text-center mb-8">
         <div className="text-7xl font-black mb-3 tracking-wide">
@@ -97,8 +120,9 @@ export default function FlashCard({
       {/* Reveal button */}
       {!revealed ? (
         <button
+          type="button"
           onClick={() => setRevealed(true)}
-          className="w-full bg-white border-2 border-[#E5E5E5] border-b-4 border-b-[#E5E5E5] text-[#3C3C3C] rounded-2xl py-4 font-bold text-base tracking-wide uppercase transition-all active:border-b-2 active:mt-0.5 hover:bg-[#F7F7F7]"
+          className="w-full touch-manipulation min-h-[52px] bg-white border-2 border-[#E5E5E5] border-b-4 border-b-[#E5E5E5] text-[#3C3C3C] rounded-2xl py-4 font-bold text-base tracking-wide uppercase transition-all active:border-b-2 active:mt-0.5 hover:bg-[#F7F7F7]"
         >
           TAP TO REVEAL 👆
         </button>
@@ -107,19 +131,24 @@ export default function FlashCard({
           {/* Meaning */}
           <div className="space-y-3 mb-6">
             <div className="bg-[#F0F9FF] border-2 border-[#BAE6FD] rounded-2xl p-4">
-              <p className="font-bold text-[#3C3C3C] text-lg">{meaningEn}</p>
-              {meaningId && <p className="text-[#AFAFAF] text-sm mt-1">{meaningId}</p>}
+              {bookLabel && (
+                <p className="text-[10px] font-black uppercase tracking-wide text-[#1CB0F6] mb-2">
+                  📘 {bookLabel}
+                </p>
+              )}
+              <p className="font-bold text-[#3C3C3C] text-lg">{cleanEn}</p>
+              {cleanId ? <p className="text-[#AFAFAF] text-sm mt-1">{cleanId}</p> : null}
             </div>
-            {exampleSentence && (
+            {exampleSentence && cleanExample && (
               <div className="bg-[#F7F7F7] border-2 border-[#E5E5E5] rounded-2xl p-3">
-                <p className="text-[#3C3C3C] text-sm font-medium">{exampleSentence}</p>
+                <p className="text-[#3C3C3C] text-sm font-medium">{cleanExample}</p>
                 {examplePinyin && (
                   <p className="text-[#AFAFAF] text-xs mt-1">{examplePinyin}</p>
                 )}
               </div>
             )}
-            {memoryTip && (
-              <p className="text-[#CE82FF] text-xs font-medium">💡 {memoryTip}</p>
+            {memoryTip && cleanTip && (
+              <p className="text-[#CE82FF] text-xs font-medium">💡 {cleanTip}</p>
             )}
           </div>
 
@@ -129,12 +158,18 @@ export default function FlashCard({
           </p>
 
           {/* Rating buttons — 3D Duolingo style */}
-          <div className="grid grid-cols-5 gap-2">
+          <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
             {RATING_BUTTONS.map(({ quality, label, bg, border, text }) => (
               <button
                 key={quality}
-                onClick={() => onRate(quality)}
-                className={`${bg} ${border} ${text} border-2 border-b-4 rounded-xl py-3 text-xs font-bold transition-all active:border-b-2 active:mt-0.5 flex flex-col items-center gap-0.5`}
+                type="button"
+                disabled={ratingDisabled}
+                onPointerUp={() => {
+                  if (!ratingDisabled) {
+                    onRate(quality);
+                  }
+                }}
+                className={`${bg} ${border} ${text} border-2 border-b-4 rounded-xl min-h-[48px] py-2.5 sm:py-3 text-[10px] sm:text-xs font-bold transition-all active:border-b-2 active:mt-0.5 flex flex-col items-center justify-center gap-0.5 cursor-pointer touch-manipulation select-none relative z-10 disabled:opacity-60 disabled:cursor-not-allowed`}
               >
                 <span className="text-base font-black">{quality}</span>
                 <span>{label}</span>

@@ -1,0 +1,98 @@
+{
+  "books": [
+    {
+      "name": "當代中文課程1",
+      "slug": "dangdai-course-1",
+      "kind": "ntnu",
+      "series": "當代中文",
+      "volume": 1,
+      "chapters": [
+        {
+          "chapter_number": 1,
+          "title": "第一課 · 自我介紹",
+          "summary": "基本問候與自我介紹；可依課本全文補齊對話與生詞表。",
+          "vocabulary": [
+            {
+              "word": "你好",
+              "pinyin": "nǐ hǎo",
+              "meaning": "hello",
+              "meaning_en": "hello",
+              "example_sentence": "你好！",
+              "source": "textbook"
+            },
+            {
+              "word": "謝謝",
+              "pinyin": "xièxie",
+              "meaning": "thank you",
+              "meaning_en": "thank you",
+              "example_sentence": "謝謝你。",
+              "source": "textbook"
+            },
+            {
+              "word": "請",
+              "pinyin": "qǐng",
+              "meaning": "please; to invite",
+              "meaning_en": "please; to invite",
+              "example_sentence": "請進。",
+              "source": "textbook"
+            },
+            {
+              "word": "坐",
+              "pinyin": "zuò",
+              "meaning": "to sit",
+              "meaning_en": "to sit",
+              "example_sentence": "請坐。",
+              "source": "textbook"
+            }
+          ],
+          "grammar": [
+            {
+              "grammar_title": "請 + 動詞（禮貌請求）",
+              "structure": "請 + Verb",
+              "explanation": "「請」放在動詞前，表示客氣地請對方做某事，接待、邀請時很常用。",
+              "examples": [
+                {
+                  "sentence": "請進。",
+                  "translation": "Silakan masuk."
+                },
+                {
+                  "sentence": "請坐。",
+                  "translation": "Silakan duduk."
+                },
+                {
+                  "sentence": "請喝茶。",
+                  "translation": "Silakan minum teh."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "時代華語 2",
+      "slug": "shidai-course-2",
+      "kind": "shidai",
+      "series": "時代華語",
+      "volume": 2,
+      "chapters": [
+        {
+          "chapter_number": 1,
+          "title": "第一課（範例）",
+          "summary": "範例章節；正式內容請由 PDF 解析或人工校對後匯入。",
+          "vocabulary": [
+            {
+              "word": "學習",
+              "pinyin": "xuéxí",
+              "meaning": "to study; to learn",
+              "meaning_en": "to study; to learn",
+              "example_sentence": "我們一起學習中文。",
+              "source": "textbook"
+            }
+          ],
+          "grammar": []
+        }
+      ]
+    }
+  ]
+}

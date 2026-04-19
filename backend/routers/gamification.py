@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from db.supabase_client import get_supabase
@@ -176,30 +178,64 @@ async def get_personalized_study_plan(jwt: dict = Depends(verify_supabase_jwt)):
     sb = get_supabase()
     profile = await _resolve_profile(sb, jwt)
     user_id = profile["id"]
+    user_hsk = int(profile.get("hsk_level") or 3)
+    native_lang = (profile.get("native_language") or "").strip().lower()
+    display_name = profile.get("display_name") or "Learner"
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+
+    due_count_row = (
+        sb.table("user_reviews")
+        .select("id", count="exact")
+        .eq("user_id", user_id)
+        .lte("next_review_at", now_iso)
+        .execute()
+    )
+    due_total = due_count_row.count or 0
+
+    weak_count_row = (
+        sb.table("user_reviews")
+        .select("id", count="exact")
+        .eq("user_id", user_id)
+        .lt("average_quality", 3)
+        .gte("review_count", 3)
+        .execute()
+    )
+    weak_total = weak_count_row.count or 0
 
     due_cards = (
         sb.table("user_reviews")
-        .select("next_review_at, vocabulary(word, pinyin, meaning_en)")
+        .select("next_review_at, vocabulary(word, pinyin, meaning_en, hsk_level)")
         .eq("user_id", user_id)
+        .lte("next_review_at", now_iso)
         .order("next_review_at")
-        .limit(5)
+        .limit(12)
         .execute()
     )
     weak_cards = (
         sb.table("user_reviews")
-        .select("average_quality, vocabulary(word, pinyin, meaning_en)")
+        .select("average_quality, vocabulary(word, pinyin, meaning_en, hsk_level)")
         .eq("user_id", user_id)
         .lt("average_quality", 3)
         .gte("review_count", 3)
         .order("average_quality")
-        .limit(5)
+        .limit(12)
         .execute()
     )
+
+    def _hsk_ok(vocab: dict) -> bool:
+        hl = vocab.get("hsk_level")
+        if hl is None:
+            return True
+        try:
+            return int(hl) <= user_hsk + 1
+        except (TypeError, ValueError):
+            return True
 
     focus_words = []
     for row in weak_cards.data or []:
         v = row.get("vocabulary")
-        if v:
+        if v and _hsk_ok(v):
             focus_words.append(
                 {
                     "word": v.get("word"),
@@ -212,7 +248,7 @@ async def get_personalized_study_plan(jwt: dict = Depends(verify_supabase_jwt)):
     if len(focus_words) < 5:
         for row in due_cards.data or []:
             v = row.get("vocabulary")
-            if not v:
+            if not v or not _hsk_ok(v):
                 continue
             already = any(w["word"] == v.get("word") for w in focus_words)
             if already:
@@ -231,26 +267,41 @@ async def get_personalized_study_plan(jwt: dict = Depends(verify_supabase_jwt)):
     daily_goal = profile.get("daily_goal_words", 5) or 5
     streak = profile.get("streak_days", 0) or 0
 
+    review_target = max(5, min(max(due_total, daily_goal), 40))
+    weak_drill = max(3, min(weak_total, 8)) if weak_total else 3
+    chat_target = 4 + min(user_hsk, 3)
+
+    if native_lang in ("id", "indonesian", "bahasa indonesia", "indo"):
+        coach_tip = (
+            f"Halo {display_name}! Kamu punya {due_total} kartu jatuh tempo dan "
+            f"{weak_total} kata rawan lupa. Selesaikan review dulu, lalu drill kosakata lemah."
+        )
+    else:
+        coach_tip = (
+            f"Hi {display_name}! You have {due_total} cards due and {weak_total} weak words. "
+            "Clear due reviews first, then drill weak vocabulary."
+        )
+
     missions = [
         {
             "id": "review-core",
             "title": "Core Review Sprint",
-            "description": "Finish your due cards first for retention.",
-            "target": max(10, daily_goal * 2),
+            "description": "Finish due cards first — spaced repetition works best in order.",
+            "target": review_target,
             "metric": "reviews",
         },
         {
             "id": "tone-focus",
-            "title": "Tone Focus Drill",
-            "description": "Repeat 5 weak words out loud with tones.",
-            "target": 5,
+            "title": "Weak Word Drill",
+            "description": "Speak these words aloud with correct tones.",
+            "target": weak_drill,
             "metric": "pronunciation",
         },
         {
             "id": "chat-mission",
             "title": "Conversation Mission",
-            "description": "Send at least 6 Mandarin chat messages tonight.",
-            "target": 6,
+            "description": "Practice new patterns in 小明 chat — mix your focus words naturally.",
+            "target": chat_target,
             "metric": "messages",
         },
     ]
@@ -258,8 +309,14 @@ async def get_personalized_study_plan(jwt: dict = Depends(verify_supabase_jwt)):
     return {
         "streak_days": streak,
         "daily_goal_words": daily_goal,
-        "focus_words": focus_words,
+        "focus_words": focus_words[:8],
         "missions": missions,
+        "due_cards_count": due_total,
+        "weak_words_count": weak_total,
+        "hsk_level": user_hsk,
+        "native_language": profile.get("native_language"),
+        "display_name": display_name,
+        "coach_tip": coach_tip,
     }
 
 

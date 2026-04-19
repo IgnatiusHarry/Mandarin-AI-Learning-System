@@ -33,3 +33,8 @@ desktop.ini
 
 # Local editor history
 .history/
+.vercel
+
+# Large Pleco export (regenerate catalog with scripts/merge_pleco_verbs_xml_into_catalog.py)
+data/curriculum/pleco_verbs_ai.xml
+frontend.zip
